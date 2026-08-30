@@ -17,6 +17,9 @@ Maintained by Maslodium.
 - Cleans speech with Facebook Research Denoiser.
 - Can use a reference recording from the same shoot to match level, broad tone
   and soft dynamics.
+- Voice polish stage with compressor, de-esser, peak limiter and approximate
+  loudness matching.
+- Folder input for batch processing supported audio/video files.
 - Saves `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`, optional
   `background_no_voice.wav` and optional `reference.wav`.
 - Selects CUDA or CPU Torch wheels during Windows bootstrap install.
@@ -68,15 +71,15 @@ Torch wheels and `--device auto` or `--device mps`.
 ```powershell
 python pipeline.py input.mp4 --out output --device auto
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
+python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```
 
 ## Possible Improvements
 
-- Denoise strength presets for light cleanup, room noise and heavy camera hiss.
-- Compressor, limiter, de-esser and loudness target controls.
 - Better Reference Match based on several lavalier samples from the same shoot.
 - Learned camera-to-lav restoration profile.
-- Batch processing for folders.
+- Real LUFS/true-peak metering.
+- Export presets for podcast, YouTube, broadcast and dialogue edit.
 
 ## Notes
 
@@ -107,6 +110,9 @@ V-D означает VOICE-DENOISE. Программа достаёт аудио
 - Очистка речи через Facebook Research Denoiser.
 - Подгонка уровня, широкого тембра и мягкой динамики по референсной записи из
   той же съёмки.
+- Финальная обработка голоса: compressor, de-esser, peak limiter и примерное
+  loudness matching.
+- Обработка папки с поддержанными аудио/видео файлами.
 - Сохранение `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`,
   опционально `background_no_voice.wav` и `reference.wav`.
 - Выбор CUDA или CPU Torch во время Windows bootstrap install.
@@ -155,17 +161,16 @@ py -3.12 -m venv .venv
 ```powershell
 python pipeline.py input.mp4 --out output --device auto
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
+python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```
 
 ## Возможные Доработки
 
-- Пресеты силы denoise для лёгкой чистки, комнатного шума и сильного шума
-  камеры.
-- Compressor, limiter, de-esser и loudness target.
 - Более точный Reference Match по нескольким образцам петлички из той же
   съёмки.
 - Обучаемый профиль восстановления `camera -> lav`.
-- Пакетная обработка папок.
+- Настоящий LUFS/true-peak metering.
+- Export presets для подкаста, YouTube, broadcast и диалогового монтажа.
 
 ## Примечания
 

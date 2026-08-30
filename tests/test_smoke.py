@@ -52,6 +52,33 @@ class PipelineSmokeTests(unittest.TestCase):
             self.assertEqual(out_sr, sr)
             self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
 
+    def test_polish_voice_writes_peak_limited_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            src = Path(td) / "voice.wav"
+            dst = Path(td) / "polished.wav"
+            sr = 16000
+            t = np.linspace(0, 1, sr, endpoint=False, dtype=np.float32)
+            voice = 0.8 * np.sin(2 * np.pi * 260 * t)
+            voice += 0.25 * np.sin(2 * np.pi * 7200 * t)
+            sf.write(str(src), voice, sr)
+
+            pipeline.polish_voice(src, dst, preset="speech", target_lufs=-18.0, peak=0.5)
+
+            polished, out_sr = sf.read(str(dst), always_2d=False)
+            self.assertEqual(out_sr, sr)
+            self.assertLessEqual(float(np.max(np.abs(polished))), 0.51)
+
+    def test_iter_inputs_supports_batch_folders(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "take.mp4").write_bytes(b"fake")
+            (root / "voice.wav").write_bytes(b"fake")
+            (root / "notes.txt").write_text("ignore", encoding="utf-8")
+
+            found = [p.name for p in pipeline.iter_inputs(root)]
+
+            self.assertEqual(found, ["take.mp4", "voice.wav"])
+
 
 if __name__ == "__main__":
     unittest.main()

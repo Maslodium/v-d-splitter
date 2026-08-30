@@ -37,6 +37,15 @@ class PipelineResult:
     reference_audio: Path | None = None
 
 
+POLISH_PRESETS = {
+    "speech": {"compressor": True, "deesser": True, "target_lufs": -16.0, "peak": 0.95},
+    "web": {"compressor": True, "deesser": True, "target_lufs": -16.0, "peak": 0.93},
+    "broadcast": {"compressor": True, "deesser": True, "target_lufs": -23.0, "peak": 0.90},
+    "camera-hiss": {"compressor": True, "deesser": True, "target_lufs": -18.0, "peak": 0.92},
+    "raw": {"compressor": False, "deesser": False, "target_lufs": None, "peak": 0.95},
+}
+
+
 def find_ffmpeg() -> str | None:
     exe = shutil.which("ffmpeg")
     if exe:
@@ -206,10 +215,97 @@ def normalize_voice(wav: Path, out_wav: Path, target_peak: float = 0.95) -> Path
     return out_wav
 
 
+def _db_to_amp(db: float) -> float:
+    return 10 ** (db / 20)
+
+
+def _amp_to_db(value: float) -> float:
+    import math
+
+    return 20 * math.log10(max(value, 1e-12))
+
+
 def _rms(x) -> float:
     import numpy as np
 
     return float(np.sqrt(np.mean(np.square(x), dtype=np.float64))) if x.size else 0.0
+
+
+def apply_compressor(y, threshold_db: float = -18.0, ratio: float = 2.6):
+    import numpy as np
+
+    threshold = _db_to_amp(threshold_db)
+    sign = np.sign(y)
+    mag = np.abs(y)
+    over = mag > threshold
+    compressed = mag.copy()
+    compressed[over] = threshold * np.power(mag[over] / threshold, 1.0 / ratio)
+    return sign * compressed
+
+
+def apply_deesser(y, sr: int, threshold_db: float = -24.0, amount: float = 0.45):
+    import numpy as np
+    from scipy.signal import butter, sosfilt
+
+    if sr < 16000 or not y.size:
+        return y
+    hi = min(11000, int(sr * 0.45))
+    if hi <= 5000:
+        return y
+    sos = butter(3, [5000, hi], btype="bandpass", fs=sr, output="sos")
+    band = sosfilt(sos, y, axis=0)
+    threshold = _db_to_amp(threshold_db)
+    mask = np.abs(band) > threshold
+    return np.where(mask, y - band * amount, y)
+
+
+def match_loudness(y, target_lufs: float | None):
+    if target_lufs is None:
+        return y
+    import numpy as np
+
+    mono = np.mean(y, axis=1) if y.ndim == 2 else y
+    current = _amp_to_db(_rms(mono))
+    gain_db = max(-18.0, min(18.0, target_lufs - current))
+    return y * _db_to_amp(gain_db)
+
+
+def limit_peak(y, peak: float = 0.95):
+    import numpy as np
+
+    ceiling = max(0.1, min(0.99, peak))
+    current = float(np.max(np.abs(y))) if y.size else 0.0
+    if current > ceiling:
+        y = y * (ceiling / current)
+    return np.clip(y, -ceiling, ceiling)
+
+
+def polish_voice(wav: Path, out_wav: Path, preset: str = "speech",
+                 compressor: bool | None = None, deesser: bool | None = None,
+                 target_lufs: float | None = None, peak: float | None = None) -> Path:
+    import soundfile as sf
+
+    settings = dict(POLISH_PRESETS.get(preset, POLISH_PRESETS["speech"]))
+    if compressor is not None:
+        settings["compressor"] = compressor
+    if deesser is not None:
+        settings["deesser"] = deesser
+    if target_lufs is not None:
+        settings["target_lufs"] = target_lufs
+    if peak is not None:
+        settings["peak"] = peak
+
+    y, sr = sf.read(str(wav), always_2d=True)
+    if settings["deesser"]:
+        y = apply_deesser(y, sr)
+    if settings["compressor"]:
+        y = apply_compressor(y)
+    y = match_loudness(y, settings["target_lufs"])
+    y = limit_peak(y, settings["peak"])
+
+    out_wav.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(out_wav), y.squeeze() if y.shape[1] == 1 else y, sr)
+    return out_wav
 
 
 def match_reference_voice(wav: Path, reference_wav: Path, out_wav: Path,
@@ -280,7 +376,12 @@ def process_video(input_path: Path, out_root: Path, device: str = "auto",
                   keep_instrumental: bool = True,
                   denoise_model: str = "dns64",
                   denoise_dry: float = 0.0,
-                  reference_audio: Path | None = None) -> PipelineResult:
+                  reference_audio: Path | None = None,
+                  polish_preset: str = "speech",
+                  compressor: bool = True,
+                  deesser: bool = True,
+                  target_lufs: float | None = -16.0,
+                  peak_ceiling: float = 0.95) -> PipelineResult:
     input_path = Path(input_path)
     if not input_path.is_file():
         raise FileNotFoundError(input_path)
@@ -313,17 +414,37 @@ def process_video(input_path: Path, out_root: Path, device: str = "auto",
     denoised = denoise_voice(voice_stem, work_dir, device=actual_device, model=denoise_model, dry=denoise_dry)
     ref_out = None
     cleaned = audio_dir / "voice_clean.wav"
+    polish_src = work_dir / "voice_before_polish.wav"
     if reference_audio:
         reference_audio = Path(reference_audio)
         if not reference_audio.is_file():
             raise FileNotFoundError(reference_audio)
         print(f"[match] reference tone/dynamics -> {reference_audio}")
         ref_out = extract_audio(reference_audio, audio_dir / "reference.wav")
-        match_reference_voice(denoised, ref_out, cleaned)
+        match_reference_voice(denoised, ref_out, polish_src)
     else:
-        normalize_voice(denoised, cleaned)
+        normalize_voice(denoised, polish_src)
+    print(f"[polish] preset={polish_preset} compressor={compressor} deesser={deesser} target_lufs={target_lufs}")
+    polish_voice(
+        polish_src,
+        cleaned,
+        preset=polish_preset,
+        compressor=compressor,
+        deesser=deesser,
+        target_lufs=target_lufs,
+        peak=peak_ceiling,
+    )
     print(f"[done] cleaned voice -> {cleaned}")
     return PipelineResult(input_path, result_dir, extracted, voice_stem, cleaned, inst_out, ref_out)
+
+
+def iter_inputs(path: Path) -> list[Path]:
+    if path.is_file():
+        return [path]
+    if not path.is_dir():
+        raise FileNotFoundError(path)
+    supported = SUPPORTED_VIDEO | SUPPORTED_AUDIO
+    return sorted(p for p in path.rglob("*") if p.is_file() and p.suffix.lower() in supported)
 
 
 def main() -> int:
@@ -337,21 +458,36 @@ def main() -> int:
     parser.add_argument("--denoise-dry", type=float, default=0.0)
     parser.add_argument("--reference-audio", type=Path, default=None,
                         help="same-shoot lav/recorder sample used for post-denoise tone and dynamics matching")
+    parser.add_argument("--polish-preset", choices=sorted(POLISH_PRESETS), default="speech")
+    parser.add_argument("--no-compressor", action="store_true")
+    parser.add_argument("--no-deesser", action="store_true")
+    parser.add_argument("--target-lufs", type=float, default=None)
+    parser.add_argument("--no-loudness", action="store_true")
+    parser.add_argument("--peak-ceiling", type=float, default=0.95)
     parser.add_argument("--no-instrumental", action="store_true")
     args = parser.parse_args()
 
     try:
-        process_video(
-            args.input,
-            args.out,
-            device=args.device,
-            model=args.model,
-            segment=args.segment,
-            keep_instrumental=not args.no_instrumental,
-            denoise_model=args.denoise_model,
-            denoise_dry=args.denoise_dry,
-            reference_audio=args.reference_audio,
-        )
+        inputs = iter_inputs(args.input)
+        if not inputs:
+            raise RuntimeError(f"no supported audio/video files in {args.input}")
+        for input_path in inputs:
+            process_video(
+                input_path,
+                args.out,
+                device=args.device,
+                model=args.model,
+                segment=args.segment,
+                keep_instrumental=not args.no_instrumental,
+                denoise_model=args.denoise_model,
+                denoise_dry=args.denoise_dry,
+                reference_audio=args.reference_audio,
+                polish_preset=args.polish_preset,
+                compressor=not args.no_compressor,
+                deesser=not args.no_deesser,
+                target_lufs=None if args.no_loudness else args.target_lufs,
+                peak_ceiling=args.peak_ceiling,
+            )
     except Exception as exc:
         print(f"[error] {exc!r}")
         return 1

@@ -125,6 +125,12 @@ class App:
         self.segment = tk.IntVar(value=cfg.get("segment", 7))
         self.denoise_model = tk.StringVar(value=cfg.get("denoise_model", "dns64"))
         self.denoise_dry = tk.IntVar(value=cfg.get("denoise_dry", 0))
+        self.polish_preset = tk.StringVar(value=cfg.get("polish_preset", "speech"))
+        self.compressor = tk.BooleanVar(value=cfg.get("compressor", True))
+        self.deesser = tk.BooleanVar(value=cfg.get("deesser", True))
+        self.loudness = tk.BooleanVar(value=cfg.get("loudness", True))
+        self.target_lufs = tk.IntVar(value=cfg.get("target_lufs", -16))
+        self.peak_ceiling = tk.IntVar(value=cfg.get("peak_ceiling", 95))
         self.keep_bg = tk.BooleanVar(value=cfg.get("keep_bg", True))
         self.status = tk.StringVar(value="READY")
 
@@ -161,6 +167,12 @@ class App:
             "segment": int(self.segment.get()),
             "denoise_model": self.denoise_model.get(),
             "denoise_dry": int(self.denoise_dry.get()),
+            "polish_preset": self.polish_preset.get(),
+            "compressor": bool(self.compressor.get()),
+            "deesser": bool(self.deesser.get()),
+            "loudness": bool(self.loudness.get()),
+            "target_lufs": int(self.target_lufs.get()),
+            "peak_ceiling": int(self.peak_ceiling.get()),
             "keep_bg": bool(self.keep_bg.get()),
         }
         try:
@@ -342,6 +354,7 @@ class App:
         left.grid(row=0, column=0, sticky="nsew", padx=(0, 12))
         self._source_section(left)
         self._engine_section(left)
+        self._polish_section(left)
         self._run_section(left)
 
         right = ttk.Frame(body, style="Shell.TFrame")
@@ -428,6 +441,18 @@ class App:
         self._spin(sec, self.denoise_dry, 0, 60).grid(row=2, column=3, sticky="w")
         self._check(sec, "Keep background_no_voice.wav", self.keep_bg).grid(row=3, column=0, columnspan=5, sticky="w", pady=(8, 0))
 
+    def _polish_section(self, parent: tk.Widget) -> None:
+        sec = self._section(parent, "VOICE POLISH")
+        tk.Label(sec, text="Preset", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=0, column=0, sticky="e", padx=(0, 8), pady=4)
+        self._combo(sec, self.polish_preset, ["speech", "web", "broadcast", "camera-hiss", "raw"], 12).grid(row=0, column=1, sticky="w")
+        tk.Label(sec, text="LUFS", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=0, column=2, sticky="e", padx=(10, 8), pady=4)
+        self._spin(sec, self.target_lufs, -30, -8).grid(row=0, column=3, sticky="w")
+        tk.Label(sec, text="Peak %", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=1, column=0, sticky="e", padx=(0, 8), pady=4)
+        self._spin(sec, self.peak_ceiling, 50, 99).grid(row=1, column=1, sticky="w")
+        self._check(sec, "Compressor", self.compressor).grid(row=1, column=2, sticky="w", padx=(10, 4))
+        self._check(sec, "De-esser", self.deesser).grid(row=1, column=3, sticky="w", padx=(4, 0))
+        self._check(sec, "Loudness", self.loudness).grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
     def _run_section(self, parent: tk.Widget) -> None:
         sec = self._section(parent, "TRANSPORT")
         self.run_btn = self._button(sec, "RUN CLEAN", self._run, accent=COLORS["cyan"])
@@ -469,7 +494,16 @@ class App:
             "--segment", str(self.segment.get()),
             "--denoise-model", self.denoise_model.get(),
             "--denoise-dry", str(max(0, min(60, int(self.denoise_dry.get()))) / 100),
+            "--polish-preset", self.polish_preset.get(),
+            "--target-lufs", str(int(self.target_lufs.get())),
+            "--peak-ceiling", str(max(50, min(99, int(self.peak_ceiling.get()))) / 100),
         ]
+        if not self.compressor.get():
+            cmd.append("--no-compressor")
+        if not self.deesser.get():
+            cmd.append("--no-deesser")
+        if not self.loudness.get():
+            cmd.append("--no-loudness")
         ref = self.ref_path.get().strip()
         if ref:
             cmd.extend(["--reference-audio", ref])
