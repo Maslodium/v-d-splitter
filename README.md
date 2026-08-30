@@ -1,5 +1,7 @@
 # V-D Splitter
 
+Author: Maslodium
+
 VOICE-DENOISE Splitter is a local desktop tool for extracting speech from
 audio/video files, separating the voice stem, denoising it with neural models
 and polishing the result for editing.
@@ -109,6 +111,8 @@ Check upstream model/code licenses before redistributing pretrained weights or
 commercial bundles.
 
 ## Русское Описание
+
+Автор: Maslodium
 
 **V-D Splitter** расшифровывается как **VOICE-DENOISE Splitter**. Это локальная
 программа для Windows и macOS, которая достаёт звук из видео или аудиофайла,
