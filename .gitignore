@@ -4,6 +4,7 @@ __pycache__/
 build/
 dist/
 payload/
+V-D-Splitter-linux/
 *.spec
 input/
 output/
