@@ -1,75 +1,56 @@
 # V-D Splitter
 
-Author: Maslodium
+Desktop voice extraction and denoise tool for video/audio files.
 
-VOICE-DENOISE Splitter is a local desktop tool for extracting speech from
-audio/video files, separating the voice stem, denoising it with neural models
-and polishing the result for editing.
+V-D means VOICE-DENOISE. The tool extracts audio through ffmpeg, separates the
+voice stem with Demucs, cleans it with a local neural denoiser and can match the
+result to a same-shoot lavalier or recorder reference.
 
-```text
-video/audio -> ffmpeg WAV -> Demucs voice split -> neural denoise -> voice polish
-```
+The interface follows the same dark cyber-metal rack style as M-A Splitter:
+custom title bar, brushed-metal section rails, dark work panels, Oxanium display
+font and cyan/magenta accents.
 
-The interface uses the same cyber-metal rack language as M-A Splitter: dark
-working panels, brushed-metal rails, custom title bar, Oxanium display font and
-cyan/magenta control accents.
+Maintained by Maslodium.
 
 ## Features
 
-- Accepts common video and audio formats: MP4, MKV, MOV, AVI, WEBM, WMV, MP3,
-  WAV, FLAC, M4A, AAC, OGG, OPUS and more.
-- Downloads/uses ffmpeg through `imageio-ffmpeg`.
-- Splits voice with Demucs `--two-stems=vocals`.
-- Cleans voice with a local neural speech denoiser.
-- Optional Reference Match: provide a lav/recorder sample from the same shoot,
-  and V-D Splitter matches broad tone, RMS level and dynamics after denoise.
-- Saves `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`,
-  `background_no_voice.wav` when enabled, and `reference.wav` when used.
-- Windows installer scans for NVIDIA GPU and installs CUDA Torch wheels when
-  available.
-- macOS build supports PyTorch `mps` device when Apple Metal acceleration is
-  available, with CPU fallback.
+- Video/audio import through ffmpeg via `imageio-ffmpeg`.
+- Voice / no-voice separation through Demucs `--two-stems=vocals`.
+- Local neural speech denoise through Facebook Research Denoiser.
+- Reference Match for same-shoot lavalier or recorder samples.
+- Output files: `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`,
+  optional `background_no_voice.wav` and `reference.wav`.
+- Windows CUDA/CPU dependency selection during bootstrap install.
+- macOS `mps` / CPU device path for Apple Silicon machines.
 
-## Install
+## Requirements
 
-Windows:
+- Windows 10/11 or macOS.
+- Python 3.10+ available through the system launcher.
+- Internet connection on first install for Python packages, Torch wheels,
+  Demucs/Denoiser weights and ffmpeg support.
+- NVIDIA GPU is optional on Windows. Apple Silicon acceleration is optional on
+  macOS.
 
-```powershell
-.\build_installer.ps1
-```
+## Installers
 
-Output:
+Current release:
 
 ```text
-dist\Install V-D Splitter.exe
+https://github.com/Maslodium/v-d-splitter/releases/tag/v0.1.0
 ```
 
-The Windows bootstrap installs into:
+Windows asset:
 
 ```text
-%LOCALAPPDATA%\V-D Splitter
+Install-V-D-Splitter.exe
 ```
 
-macOS builds must be produced on macOS:
-
-```bash
-bash build_macos.sh
-```
-
-Output:
+macOS asset:
 
 ```text
-dist/V-D-Splitter-macOS.zip
+V-D-Splitter-macOS.zip
 ```
-
-The macOS bootstrap installs into:
-
-```text
-~/Applications/V-D Splitter
-```
-
-Both bootstrap installers create a venv, install PyTorch, install app
-dependencies, provide ffmpeg support and create a launch shortcut/script.
 
 ## Run From Source
 
@@ -80,8 +61,8 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\pythonw.exe gui.py
 ```
 
-CPU machines can install Torch without the CUDA index. macOS can use standard
-Torch wheels and the `auto`/`mps` device path.
+CPU machines can install Torch without the CUDA index. On macOS, use standard
+Torch wheels and `--device auto` or `--device mps`.
 
 ## CLI
 
@@ -90,55 +71,86 @@ python pipeline.py input.mp4 --out output --device auto
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
 ```
 
-## Audio Roadmap
+## Notes
 
-- Neural denoise strength presets for speech, interviews, room noise and heavy
-  camera hiss.
-- Compressor, limiter, de-esser and loudness target controls for broadcast-like
-  exports.
-- Reference Match can evolve into a learned same-shoot restoration model: give
-  it camera audio plus clean lav samples from other takes, and it learns the
-  spectral/dynamic gap between the camera and lav chain.
-- Batch mode for folders, with per-file logs and failed-file recovery.
+Reference Match currently performs conservative level, broad spectral and soft
+dynamics matching. It is not yet a trained camera-to-lav restoration model.
 
-## Licenses And Models
-
-- Demucs is used for source separation.
-- Facebook Research Denoiser is used for neural speech denoising.
-- Oxanium is bundled under the SIL Open Font License 1.1.
+Good next audio controls are denoise strength, compressor, limiter, de-esser,
+loudness target and batch processing.
 
 Check upstream model/code licenses before redistributing pretrained weights or
 commercial bundles.
 
-## Русское Описание
+---
 
-Автор: Maslodium
+# V-D Splitter
 
-**V-D Splitter** расшифровывается как **VOICE-DENOISE Splitter**. Это локальная
-программа для Windows и macOS, которая достаёт звук из видео или аудиофайла,
-отделяет голос, чистит его нейросетью и готовит дорожку к монтажу.
+Настольная утилита для извлечения и очистки голоса из видео и аудио.
 
-Интерфейс приведён к стилю M-A Splitter: тёмные рабочие области без лишней
-текстуры, металлические полосы, кастомная верхняя панель окна, Oxanium для
-заголовков и киберпанк-акценты в палитре.
+V-D означает VOICE-DENOISE. Программа достаёт аудио через ffmpeg, отделяет
+голос через Demucs, чистит его локальным нейросетевым denoiser и может
+подгонять результат под образец с петлички или рекордера из той же съёмки.
+
+Интерфейс сделан в том же тёмном cyber-metal rack стиле, что и M-A Splitter:
+собственная верхняя панель окна, металлические полосы разделов, тёмные рабочие
+панели, шрифт Oxanium и cyan/magenta акценты.
+
+Поддерживает Maslodium.
 
 ## Возможности
 
-- Поддержка популярных видео и аудио форматов: MP4, MKV, MOV, AVI, WEBM, WMV,
-  MP3, WAV, FLAC, M4A, AAC, OGG, OPUS и другие.
-- `ffmpeg` подтягивается через `imageio-ffmpeg`.
-- Голос отделяется через Demucs.
-- Шум убирается локальным нейросетевым denoiser.
-- Режим Reference Match: можно дать программе образец с петлички или рекордера
-  из той же съёмки, и она подгонит очищенный камерный звук по уровню, тембру и
-  мягкой динамике.
-- На Windows установщик сканирует NVIDIA GPU и выбирает CUDA/CPU Torch.
-- На macOS поддержан режим `mps` для Apple Silicon, если PyTorch видит Metal.
+- Импорт видео и аудио через ffmpeg / `imageio-ffmpeg`.
+- Разделение voice / no-voice через Demucs `--two-stems=vocals`.
+- Локальная нейросетевая очистка речи через Facebook Research Denoiser.
+- Reference Match для образцов с петлички или рекордера из той же съёмки.
+- Выходные файлы: `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`,
+  опционально `background_no_voice.wav` и `reference.wav`.
+- На Windows установщик выбирает CUDA/CPU зависимости.
+- На macOS есть путь `mps` / CPU для Apple Silicon.
 
-## Что Добавить Дальше
+## Требования
 
-- Ручки denoise strength, компрессии, лимитера, de-esser и target loudness.
-- Пресеты: интервью, съёмка на камеру, подкаст, шумная улица, помещение.
-- Более умный Reference Match: обучаемый локальный профиль камеры и петлички по
-  нескольким дублям одной съёмки.
-- Пакетная обработка папки с видео.
+- Windows 10/11 или macOS.
+- Python 3.10+ в системном запускателе.
+- Интернет при первой установке для Python-пакетов, Torch, весов моделей и
+  ffmpeg.
+- NVIDIA GPU на Windows не обязателен. Apple Silicon acceleration на macOS тоже
+  опционален.
+
+## Установщики
+
+Текущий релиз:
+
+```text
+https://github.com/Maslodium/v-d-splitter/releases/tag/v0.1.0
+```
+
+Windows:
+
+```text
+Install-V-D-Splitter.exe
+```
+
+macOS:
+
+```text
+V-D-Splitter-macOS.zip
+```
+
+## Запуск из исходников
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu126
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\pythonw.exe gui.py
+```
+
+## Примечания
+
+Reference Match сейчас делает аккуратное выравнивание громкости, широкого тембра
+и мягкой динамики. Это ещё не обученная модель восстановления `camera -> lav`.
+
+Ближайшие полезные регуляторы: сила denoise, compressor, limiter, de-esser,
+loudness target и пакетная обработка.
