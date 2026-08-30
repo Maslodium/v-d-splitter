@@ -1,0 +1,16 @@
+certifi
+charset-normalizer
+colorama
+demucs==4.0.1
+denoiser==0.1.5
+filelock
+idna
+imageio-ffmpeg==0.6.0
+librosa==0.11.0
+numpy>=2.2,<3
+packaging
+requests
+scipy
+soundfile==0.13.1
+tqdm
+urllib3
