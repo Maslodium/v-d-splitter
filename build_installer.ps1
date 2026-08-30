@@ -17,9 +17,9 @@ Get-ChildItem $Root -Force | Where-Object {
   else { Copy-Item $_.FullName $dest -Force }
 }
 & $Python -m PyInstaller `
-  --name "Install Voice-Denoise Splitter" `
+  --name "Install V-D Splitter" `
   --onefile `
   --console `
   --add-data "$Payload;payload" `
   (Join-Path $Root "installer\bootstrap_installer.py")
-Write-Host "Built:" (Join-Path $Root "dist\Install Voice-Denoise Splitter.exe")
+Write-Host "Built:" (Join-Path $Root "dist\Install V-D Splitter.exe")

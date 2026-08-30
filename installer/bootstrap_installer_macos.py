@@ -1,8 +1,8 @@
 """
-Voice-Denoise Splitter macOS bootstrap installer.
+V-D Splitter macOS bootstrap installer.
 
 Packaged as a small .app on macOS. It copies the app payload into
-~/Applications/Voice-Denoise Splitter, creates a venv, installs dependencies,
+~/Applications/V-D Splitter, creates a venv, installs dependencies,
 and creates a Desktop launcher.
 """
 
@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 
-APP_NAME = "Voice-Denoise Splitter"
+APP_NAME = "V-D Splitter"
 INSTALL_DIR = Path.home() / "Applications" / APP_NAME
 
 

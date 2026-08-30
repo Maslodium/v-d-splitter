@@ -1,7 +1,7 @@
 """
-Voice-Denoise Splitter GUI.
+V-D Splitter GUI.
 
-Cyber-metal Tkinter shell inherited from the M-A Splitter interface work.
+VOICE-DENOISE desktop shell inherited from the M-A Splitter interface work.
 """
 
 from __future__ import annotations
@@ -102,7 +102,7 @@ def tip(widget: tk.Widget, text: str) -> tk.Widget:
 class App:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        root.title("Voice-Denoise Splitter")
+        root.title("V-D Splitter")
         root.geometry("1120x690")
         root.minsize(960, 610)
         root.overrideredirect(True)
@@ -118,6 +118,7 @@ class App:
 
         cfg = self._load_settings()
         self.in_path = tk.StringVar(value=cfg.get("in_path", ""))
+        self.ref_path = tk.StringVar(value=cfg.get("ref_path", ""))
         self.out_path = tk.StringVar(value=cfg.get("out_path", str(HERE / "output")))
         self.device = tk.StringVar(value=cfg.get("device", "auto"))
         self.model = tk.StringVar(value=cfg.get("model", "htdemucs_ft"))
@@ -153,6 +154,7 @@ class App:
     def _save_settings(self) -> None:
         data = {
             "in_path": self.in_path.get(),
+            "ref_path": self.ref_path.get(),
             "out_path": self.out_path.get(),
             "device": self.device.get(),
             "model": self.model.get(),
@@ -377,7 +379,7 @@ class App:
         bar.bind("<ButtonPress-1>", self._drag_start)
         bar.bind("<B1-Motion>", self._drag_move)
         bar.bind("<Double-Button-1>", lambda _e: self._toggle_max())
-        bar.create_text(14, 17, text="VOICE-DENOISE SPLITTER // AI VOICE ISOLATION", anchor="w",
+        bar.create_text(14, 17, text="V-D SPLITTER // VOICE-DENOISE", anchor="w",
                         fill=COLORS["cyan"], font=(self.display_font, 10))
         controls = tk.Frame(bar, bg=COLORS["metal_dark"])
         controls.place(relx=1.0, x=-6, y=5, anchor="ne")
@@ -391,9 +393,9 @@ class App:
         hero = tk.Canvas(parent, height=88, bg=COLORS["bg"], bd=0, highlightthickness=0)
         hero.pack(fill="x")
         hero.bind("<Configure>", lambda e: self._paint_metal(hero, e.width, e.height, COLORS["bg"]))
-        hero.create_text(24, 22, text="VOICE-DENOISE SPLITTER", anchor="nw", fill=COLORS["text_hi"],
+        hero.create_text(24, 22, text="V-D SPLITTER", anchor="nw", fill=COLORS["text_hi"],
                          font=(self.display_font, 28))
-        hero.create_text(26, 58, text="VIDEO AUDIO EXTRACTION / VOICE STEMS / NEURAL DENOISE",
+        hero.create_text(26, 58, text="VOICE-DENOISE / VIDEO AUDIO EXTRACTION / REFERENCE MATCH",
                          anchor="nw", fill=COLORS["muted"], font=("Consolas", 9))
         hero.create_line(24, 78, 270, 78, fill=COLORS["cyan"], width=2)
         hero.create_line(274, 78, 410, 78, fill=COLORS["magenta"], width=2)
@@ -405,9 +407,12 @@ class App:
         tk.Label(sec, text="Input", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=0, column=0, sticky="e", padx=(0, 8), pady=4)
         tip(self._entry(sec, self.in_path, 34), "Video or audio file.").grid(row=0, column=1, columnspan=4, sticky="ew")
         self._button(sec, "Browse", self._pick_input).grid(row=0, column=5, padx=(8, 0))
-        tk.Label(sec, text="Output", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=1, column=0, sticky="e", padx=(0, 8), pady=4)
-        tip(self._entry(sec, self.out_path, 34), "Folder for extracted and cleaned audio.").grid(row=1, column=1, columnspan=4, sticky="ew")
-        self._button(sec, "Folder", self._pick_output).grid(row=1, column=5, padx=(8, 0))
+        tk.Label(sec, text="Reference", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=1, column=0, sticky="e", padx=(0, 8), pady=4)
+        tip(self._entry(sec, self.ref_path, 34), "Optional lav/recorder sample from the same shoot for tone and dynamics matching.").grid(row=1, column=1, columnspan=4, sticky="ew")
+        self._button(sec, "Sample", self._pick_reference).grid(row=1, column=5, padx=(8, 0))
+        tk.Label(sec, text="Output", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=2, column=0, sticky="e", padx=(0, 8), pady=4)
+        tip(self._entry(sec, self.out_path, 34), "Folder for extracted and cleaned audio.").grid(row=2, column=1, columnspan=4, sticky="ew")
+        self._button(sec, "Folder", self._pick_output).grid(row=2, column=5, padx=(8, 0))
 
     def _engine_section(self, parent: tk.Widget) -> None:
         sec = self._section(parent, "AI ENGINE")
@@ -438,6 +443,11 @@ class App:
         if p:
             self.in_path.set(p)
 
+    def _pick_reference(self) -> None:
+        p = filedialog.askopenfilename(title="Select reference audio/video", filetypes=VIDEO_TYPES)
+        if p:
+            self.ref_path.set(p)
+
     def _pick_output(self) -> None:
         p = filedialog.askdirectory(title="Select output folder", initialdir=self.out_path.get() or str(HERE))
         if p:
@@ -460,6 +470,9 @@ class App:
             "--denoise-model", self.denoise_model.get(),
             "--denoise-dry", str(max(0, min(60, int(self.denoise_dry.get()))) / 100),
         ]
+        ref = self.ref_path.get().strip()
+        if ref:
+            cmd.extend(["--reference-audio", ref])
         if not self.keep_bg.get():
             cmd.append("--no-instrumental")
         self.last_result_dir = Path(out) / Path(src).stem

@@ -28,12 +28,12 @@ rsync -a "${ROOT}/" "${PAYLOAD}/" \
   --exclude "settings.json"
 
 "${PYTHON}" -m PyInstaller \
-  --name "Install Voice-Denoise Splitter macOS" \
+  --name "Install V-D Splitter macOS" \
   --onefile \
   --windowed \
   --add-data "${PAYLOAD}:payload" \
   "${ROOT}/installer/bootstrap_installer_macos.py"
 
 cd "${ROOT}/dist"
-ditto -c -k --keepParent "Install Voice-Denoise Splitter macOS.app" "Voice-Denoise-Splitter-macOS.zip"
-echo "Built: ${ROOT}/dist/Voice-Denoise-Splitter-macOS.zip"
+ditto -c -k --keepParent "Install V-D Splitter macOS.app" "V-D-Splitter-macOS.zip"
+echo "Built: ${ROOT}/dist/V-D-Splitter-macOS.zip"

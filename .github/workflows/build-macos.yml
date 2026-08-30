@@ -36,4 +36,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Voice-Denoise-Splitter-macOS
-          path: dist/Voice-Denoise-Splitter-macOS.zip
+          path: dist/V-D-Splitter-macOS.zip

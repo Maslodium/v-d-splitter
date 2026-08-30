@@ -34,6 +34,24 @@ class PipelineSmokeTests(unittest.TestCase):
     def test_find_ffmpeg_uses_bundled_imageio_when_available(self) -> None:
         self.assertIsNotNone(pipeline.find_ffmpeg())
 
+    def test_match_reference_voice_writes_limited_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            src = Path(td) / "camera.wav"
+            ref = Path(td) / "lav.wav"
+            dst = Path(td) / "matched.wav"
+            sr = 16000
+            t = np.linspace(0, 1, sr, endpoint=False, dtype=np.float32)
+            camera = 0.08 * np.sin(2 * np.pi * 260 * t)
+            lav = 0.22 * np.sin(2 * np.pi * 260 * t) + 0.03 * np.sin(2 * np.pi * 2500 * t)
+            sf.write(str(src), camera, sr)
+            sf.write(str(ref), lav, sr)
+
+            pipeline.match_reference_voice(src, ref, dst, target_peak=0.5)
+
+            matched, out_sr = sf.read(str(dst), always_2d=False)
+            self.assertEqual(out_sr, sr)
+            self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,15 +1,16 @@
-# Voice-Denoise Splitter
+# V-D Splitter
 
-Windows desktop tool for extracting voice from audio/video files and cleaning it
-with local neural models.
+VOICE-DENOISE Splitter is a local desktop tool for extracting speech from
+audio/video files, separating the voice stem, denoising it with neural models
+and polishing the result for editing.
 
 ```text
-video/audio -> ffmpeg extracted WAV -> Demucs voice split -> neural speech denoise
+video/audio -> ffmpeg WAV -> Demucs voice split -> neural denoise -> voice polish
 ```
 
-The interface follows the cyber-metal rack style of M-A Splitter, but this is a
-separate project focused on voices from video, interviews, podcasts, streams and
-mixed audio.
+The interface uses the same cyber-metal rack language as M-A Splitter: dark
+working panels, brushed-metal rails, custom title bar, Oxanium display font and
+cyan/magenta control accents.
 
 ## Features
 
@@ -18,51 +19,57 @@ mixed audio.
 - Downloads/uses ffmpeg through `imageio-ffmpeg`.
 - Splits voice with Demucs `--two-stems=vocals`.
 - Cleans voice with a local neural speech denoiser.
-- Saves:
-  - `audio/extracted.wav`
-  - `audio/voice_raw.wav`
-  - `audio/voice_clean.wav`
-  - `audio/background_no_voice.wav` when enabled
-- Scans the system during installation and installs CUDA Torch wheels when an
-  NVIDIA GPU is detected.
-- On macOS, `auto` can use Apple's PyTorch MPS backend when it is available,
-  with CPU fallback.
+- Optional Reference Match: provide a lav/recorder sample from the same shoot,
+  and V-D Splitter matches broad tone, RMS level and dynamics after denoise.
+- Saves `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`,
+  `background_no_voice.wav` when enabled, and `reference.wav` when used.
+- Windows installer scans for NVIDIA GPU and installs CUDA Torch wheels when
+  available.
+- macOS build supports PyTorch `mps` device when Apple Metal acceleration is
+  available, with CPU fallback.
 
-## Install From EXE
+## Install
 
-Build the installer:
+Windows:
 
 ```powershell
 .\build_installer.ps1
 ```
 
-The generated installer is:
+Output:
 
 ```text
-dist\Install Voice-Denoise Splitter.exe
+dist\Install V-D Splitter.exe
 ```
 
-When launched, the installer copies the app to:
+The Windows bootstrap installs into:
 
 ```text
-%LOCALAPPDATA%\Voice-Denoise Splitter
+%LOCALAPPDATA%\V-D Splitter
 ```
 
-Then it creates a virtual environment, installs dependencies, downloads ffmpeg
-support, creates a desktop shortcut and selects CUDA/CPU Torch wheels based on
-the local system scan.
+macOS builds must be produced on macOS:
 
-The bootstrap installer expects Python 3.10+ to be available through the
-standard Windows `py` launcher or `python` command. If Python is missing, it
-prints a clear message and stops instead of looping.
+```bash
+bash build_macos.sh
+```
+
+Output:
+
+```text
+dist/V-D-Splitter-macOS.zip
+```
+
+The macOS bootstrap installs into:
+
+```text
+~/Applications/V-D Splitter
+```
+
+Both bootstrap installers create a venv, install PyTorch, install app
+dependencies, provide ffmpeg support and create a launch shortcut/script.
 
 ## Run From Source
-
-```powershell
-.\run_from_source.ps1
-```
-
-Or manually:
 
 ```powershell
 py -3.12 -m venv .venv
@@ -71,43 +78,63 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\pythonw.exe gui.py
 ```
 
-Use CPU wheels instead of the CUDA index on machines without NVIDIA GPUs.
-
-## macOS Build
-
-macOS builds must be produced on macOS. The repository includes a GitHub
-Actions workflow and a local build script:
-
-```bash
-bash build_macos.sh
-```
-
-The macOS artifact is:
-
-```text
-dist/Voice-Denoise-Splitter-macOS.zip
-```
-
-It contains a small installer app. The app copies the project to:
-
-```text
-~/Applications/Voice-Denoise Splitter
-```
-
-Then it creates a venv, installs PyTorch with CPU/MPS support, installs the app
-dependencies and creates `Voice-Denoise Splitter.command` on the Desktop.
+CPU machines can install Torch without the CUDA index. macOS can use standard
+Torch wheels and the `auto`/`mps` device path.
 
 ## CLI
 
 ```powershell
 python pipeline.py input.mp4 --out output --device auto
+python pipeline.py camera.wav --reference-audio lav_take.wav --out output
 ```
+
+## Audio Roadmap
+
+- Neural denoise strength presets for speech, interviews, room noise and heavy
+  camera hiss.
+- Compressor, limiter, de-esser and loudness target controls for broadcast-like
+  exports.
+- Reference Match can evolve into a learned same-shoot restoration model: give
+  it camera audio plus clean lav samples from other takes, and it learns the
+  spectral/dynamic gap between the camera and lav chain.
+- Batch mode for folders, with per-file logs and failed-file recovery.
 
 ## Licenses And Models
 
 - Demucs is used for source separation.
 - Facebook Research Denoiser is used for neural speech denoising.
-- The bundled Oxanium font is distributed under SIL Open Font License 1.1.
+- Oxanium is bundled under the SIL Open Font License 1.1.
 
-See the upstream projects for their model/code licenses before redistributing
-pretrained weights or commercial bundles.
+Check upstream model/code licenses before redistributing pretrained weights or
+commercial bundles.
+
+## Русское Описание
+
+**V-D Splitter** расшифровывается как **VOICE-DENOISE Splitter**. Это локальная
+программа для Windows и macOS, которая достаёт звук из видео или аудиофайла,
+отделяет голос, чистит его нейросетью и готовит дорожку к монтажу.
+
+Интерфейс приведён к стилю M-A Splitter: тёмные рабочие области без лишней
+текстуры, металлические полосы, кастомная верхняя панель окна, Oxanium для
+заголовков и киберпанк-акценты в палитре.
+
+## Возможности
+
+- Поддержка популярных видео и аудио форматов: MP4, MKV, MOV, AVI, WEBM, WMV,
+  MP3, WAV, FLAC, M4A, AAC, OGG, OPUS и другие.
+- `ffmpeg` подтягивается через `imageio-ffmpeg`.
+- Голос отделяется через Demucs.
+- Шум убирается локальным нейросетевым denoiser.
+- Режим Reference Match: можно дать программе образец с петлички или рекордера
+  из той же съёмки, и она подгонит очищенный камерный звук по уровню, тембру и
+  мягкой динамике.
+- На Windows установщик сканирует NVIDIA GPU и выбирает CUDA/CPU Torch.
+- На macOS поддержан режим `mps` для Apple Silicon, если PyTorch видит Metal.
+
+## Что Добавить Дальше
+
+- Ручки denoise strength, компрессии, лимитера, de-esser и target loudness.
+- Пресеты: интервью, съёмка на камеру, подкаст, шумная улица, помещение.
+- Более умный Reference Match: обучаемый локальный профиль камеры и петлички по
+  нескольким дублям одной съёмки.
+- Пакетная обработка папки с видео.

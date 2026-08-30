@@ -1,8 +1,8 @@
 r"""
-Voice-Denoise Splitter bootstrap installer.
+V-D Splitter bootstrap installer.
 
 This file is packaged into a small EXE. It copies the app payload into
-%LOCALAPPDATA%\Voice-Denoise Splitter, creates a venv, scans the system, and
+%LOCALAPPDATA%\V-D Splitter, creates a venv, scans the system, and
 downloads the matching ML dependencies.
 """
 
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 
-APP_NAME = "Voice-Denoise Splitter"
+APP_NAME = "V-D Splitter"
 INSTALL_DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / APP_NAME
 
 
