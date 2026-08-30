@@ -412,7 +412,7 @@ class App:
     def _engine_section(self, parent: tk.Widget) -> None:
         sec = self._section(parent, "AI ENGINE")
         tk.Label(sec, text="Device", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=0, column=0, sticky="e", padx=(0, 8), pady=4)
-        self._combo(sec, self.device, ["auto", "cuda", "cpu"], 8).grid(row=0, column=1, sticky="w")
+        self._combo(sec, self.device, ["auto", "cuda", "mps", "cpu"], 8).grid(row=0, column=1, sticky="w")
         tk.Label(sec, text="Segment", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=0, column=2, sticky="e", padx=(10, 8), pady=4)
         self._spin(sec, self.segment, 1, 60).grid(row=0, column=3, sticky="w")
         tk.Label(sec, text="Model", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=1, column=0, sticky="e", padx=(0, 8), pady=4)
@@ -550,12 +550,20 @@ class App:
             return
         p = self.last_result_dir / "audio" / self.results.get(sel[0])
         if p.is_file():
-            os.startfile(str(p))
+            self._open_path(p)
 
     def _open_result_dir(self) -> None:
         d = self.last_result_dir or Path(self.out_path.get())
         d.mkdir(parents=True, exist_ok=True)
-        os.startfile(str(d))
+        self._open_path(d)
+
+    def _open_path(self, path: Path) -> None:
+        if sys.platform == "darwin":
+            subprocess.run(["open", str(path)], check=False)
+        elif os.name == "nt":
+            os.startfile(str(path))
+        else:
+            subprocess.run(["xdg-open", str(path)], check=False)
 
     def _log(self, text: str) -> None:
         self.log.insert("end", text)

@@ -44,6 +44,35 @@ def has_nvidia_gpu() -> bool:
         return False
 
 
+def find_host_python() -> list[str]:
+    if not getattr(sys, "frozen", False):
+        return [sys.executable]
+
+    candidates = [
+        ["py", "-3.12"],
+        ["py", "-3"],
+        ["python"],
+        ["python3"],
+    ]
+    for cmd in candidates:
+        try:
+            proc = subprocess.run(
+                [*cmd, "-c", "import sys; print(sys.version_info[:2])"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                check=False,
+            )
+            if proc.returncode == 0:
+                return cmd
+        except Exception:
+            pass
+    raise RuntimeError(
+        "Python 3.10+ was not found. Install Python from https://www.python.org/downloads/windows/ "
+        "and enable 'Add python.exe to PATH', then run this installer again."
+    )
+
+
 def copy_payload(src: Path, dst: Path) -> None:
     dst.mkdir(parents=True, exist_ok=True)
     for item in src.iterdir():
@@ -82,7 +111,8 @@ def install_dependencies(app_dir: Path) -> None:
     pyw = venv / "Scripts" / "pythonw.exe" if os.name == "nt" else py
 
     if not py.exists():
-        run([sys.executable, "-m", "venv", str(venv)])
+        host_python = find_host_python()
+        run([*host_python, "-m", "venv", str(venv)])
 
     run([str(py), "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"])
 

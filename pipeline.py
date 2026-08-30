@@ -108,6 +108,13 @@ def pick_device(requested: str) -> str:
     try:
         import torch
 
+        if requested in {"auto", "cuda"} and torch.cuda.is_available():
+            return "cuda"
+        if requested in {"auto", "mps"} and hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"
+        if requested == "mps":
+            print("[warn] MPS requested but unavailable; using CPU.")
+            return "cpu"
         if torch.cuda.is_available():
             return "cuda"
     except Exception:
@@ -242,7 +249,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="extract voices from video and denoise them")
     parser.add_argument("input", type=Path)
     parser.add_argument("--out", type=Path, default=Path("output"))
-    parser.add_argument("--device", choices=["auto", "cuda", "cpu"], default="auto")
+    parser.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
     parser.add_argument("--model", default="htdemucs_ft")
     parser.add_argument("--segment", type=int, default=7)
     parser.add_argument("--denoise-model", choices=["dns48", "dns64", "master64", "valentini_nc"], default="dns64")

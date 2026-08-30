@@ -25,6 +25,8 @@ mixed audio.
   - `audio/background_no_voice.wav` when enabled
 - Scans the system during installation and installs CUDA Torch wheels when an
   NVIDIA GPU is detected.
+- On macOS, `auto` can use Apple's PyTorch MPS backend when it is available,
+  with CPU fallback.
 
 ## Install From EXE
 
@@ -50,6 +52,10 @@ Then it creates a virtual environment, installs dependencies, downloads ffmpeg
 support, creates a desktop shortcut and selects CUDA/CPU Torch wheels based on
 the local system scan.
 
+The bootstrap installer expects Python 3.10+ to be available through the
+standard Windows `py` launcher or `python` command. If Python is missing, it
+prints a clear message and stops instead of looping.
+
 ## Run From Source
 
 ```powershell
@@ -66,6 +72,30 @@ py -3.12 -m venv .venv
 ```
 
 Use CPU wheels instead of the CUDA index on machines without NVIDIA GPUs.
+
+## macOS Build
+
+macOS builds must be produced on macOS. The repository includes a GitHub
+Actions workflow and a local build script:
+
+```bash
+bash build_macos.sh
+```
+
+The macOS artifact is:
+
+```text
+dist/Voice-Denoise-Splitter-macOS.zip
+```
+
+It contains a small installer app. The app copies the project to:
+
+```text
+~/Applications/Voice-Denoise Splitter
+```
+
+Then it creates a venv, installs PyTorch with CPU/MPS support, installs the app
+dependencies and creates `Voice-Denoise Splitter.command` on the Desktop.
 
 ## CLI
 
