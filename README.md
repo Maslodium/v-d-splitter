@@ -153,6 +153,12 @@ macOS:
 V-D-Splitter-macOS.zip
 ```
 
+Linux:
+
+```text
+V-D-Splitter-linux.tar.gz
+```
+
 ## Запуск из исходников
 
 ```powershell
