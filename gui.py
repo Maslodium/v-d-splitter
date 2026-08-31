@@ -125,6 +125,7 @@ class App:
         self.device = tk.StringVar(value=cfg.get("device", "auto"))
         self.model = tk.StringVar(value=cfg.get("model", "htdemucs_ft"))
         self.segment = tk.IntVar(value=cfg.get("segment", 7))
+        self.denoise_backend = tk.StringVar(value=cfg.get("denoise_backend", "denoiser"))
         self.denoise_model = tk.StringVar(value=cfg.get("denoise_model", "dns64"))
         self.denoise_dry = tk.IntVar(value=cfg.get("denoise_dry", 0))
         self.polish_preset = tk.StringVar(value=cfg.get("polish_preset", "speech"))
@@ -169,6 +170,7 @@ class App:
             "device": self.device.get(),
             "model": self.model.get(),
             "segment": int(self.segment.get()),
+            "denoise_backend": self.denoise_backend.get(),
             "denoise_model": self.denoise_model.get(),
             "denoise_dry": int(self.denoise_dry.get()),
             "polish_preset": self.polish_preset.get(),
@@ -446,10 +448,11 @@ class App:
         tk.Label(sec, text="Model", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=1, column=0, sticky="e", padx=(0, 8), pady=4)
         self._combo(sec, self.model, ["htdemucs_ft", "htdemucs", "mdx_extra", "mdx_extra_q"], 14).grid(row=1, column=1, columnspan=3, sticky="w")
         tk.Label(sec, text="Denoise", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=2, column=0, sticky="e", padx=(0, 8), pady=4)
-        self._combo(sec, self.denoise_model, ["dns64", "dns48", "master64", "valentini_nc"], 14).grid(row=2, column=1, sticky="w")
-        tk.Label(sec, text="Dry %", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=2, column=2, sticky="e", padx=(10, 8), pady=4)
-        self._spin(sec, self.denoise_dry, 0, 60).grid(row=2, column=3, sticky="w")
-        self._check(sec, "Keep background_no_voice.wav", self.keep_bg).grid(row=3, column=0, columnspan=5, sticky="w", pady=(8, 0))
+        self._combo(sec, self.denoise_backend, ["denoiser", "resemble-enhance"], 16).grid(row=2, column=1, sticky="w")
+        self._combo(sec, self.denoise_model, ["dns64", "dns48", "master64", "valentini_nc"], 14).grid(row=2, column=2, sticky="w", padx=(8, 0))
+        tk.Label(sec, text="Dry %", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=3, column=0, sticky="e", padx=(0, 8), pady=4)
+        self._spin(sec, self.denoise_dry, 0, 60).grid(row=3, column=1, sticky="w")
+        self._check(sec, "Keep background_no_voice.wav", self.keep_bg).grid(row=4, column=0, columnspan=5, sticky="w", pady=(8, 0))
 
     def _polish_section(self, parent: tk.Widget) -> None:
         sec = self._section(parent, "VOICE POLISH")
@@ -512,6 +515,7 @@ class App:
             "--device", self.device.get(),
             "--model", self.model.get(),
             "--segment", str(self.segment.get()),
+            "--denoise-backend", self.denoise_backend.get(),
             "--denoise-model", self.denoise_model.get(),
             "--denoise-dry", str(max(0, min(60, int(self.denoise_dry.get()))) / 100),
             "--polish-preset", self.polish_preset.get(),

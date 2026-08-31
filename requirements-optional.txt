@@ -1,0 +1,4 @@
+# Optional experimental backends. Install manually inside the app venv.
+# Resemble Enhance can improve speech quality and bandwidth, but is heavier and
+# may be less predictable across platforms than the default denoiser backend.
+resemble-enhance

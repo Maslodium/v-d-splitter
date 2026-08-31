@@ -163,7 +163,11 @@ def separate_voice(audio_wav: Path, work_dir: Path, device: str, model: str = "h
 
 
 def denoise_voice(voice_wav: Path, work_dir: Path, device: str = "cpu",
-                  model: str = "dns64", dry: float = 0.0) -> Path:
+                  model: str = "dns64", dry: float = 0.0,
+                  backend: str = "denoiser") -> Path:
+    if backend == "resemble-enhance":
+        return denoise_voice_resemble(voice_wav, work_dir, device=device)
+
     noisy_dir = work_dir / "denoise_input"
     out_dir = work_dir / "denoised"
     noisy_dir.mkdir(parents=True, exist_ok=True)
@@ -199,6 +203,42 @@ def denoise_voice(voice_wav: Path, work_dir: Path, device: str = "cpu",
     candidates = sorted(out_dir.rglob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
     if not candidates:
         raise RuntimeError(f"Denoiser did not produce a wav in {out_dir}")
+    return candidates[0]
+
+
+def denoise_voice_resemble(voice_wav: Path, work_dir: Path, device: str = "cpu") -> Path:
+    exe = shutil.which("resemble-enhance")
+    if exe is None:
+        raise RuntimeError(
+            "Resemble Enhance is not installed. Install optional backend with: "
+            "python -m pip install resemble-enhance"
+        )
+
+    in_dir = work_dir / "resemble_input"
+    out_dir = work_dir / "resemble_enhanced"
+    in_dir.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    staged = in_dir / voice_wav.name
+    shutil.copy2(voice_wav, staged)
+
+    use_device = device if device in {"cuda", "cpu"} else "cpu"
+    run_command([
+        exe,
+        str(in_dir),
+        str(out_dir),
+        "--device",
+        use_device,
+        "--solver",
+        "midpoint",
+        "--nfe",
+        "64",
+        "--tau",
+        "0.5",
+    ])
+
+    candidates = sorted(out_dir.rglob("*.wav"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not candidates:
+        raise RuntimeError(f"Resemble Enhance did not produce a wav in {out_dir}")
     return candidates[0]
 
 
@@ -474,6 +514,7 @@ def apply_reference_model(wav: Path, model_path: Path, out_wav: Path,
 def process_video(input_path: Path, out_root: Path, device: str = "auto",
                   model: str = "htdemucs_ft", segment: int = 7,
                   keep_instrumental: bool = True,
+                  denoise_backend: str = "denoiser",
                   denoise_model: str = "dns64",
                   denoise_dry: float = 0.0,
                   reference_audio: Path | None = None,
@@ -512,8 +553,15 @@ def process_video(input_path: Path, out_root: Path, device: str = "auto",
         inst_out = audio_dir / "background_no_voice.wav"
         shutil.copy2(instrumental, inst_out)
 
-    print(f"[denoise] neural speech enhancement ({denoise_model})")
-    denoised = denoise_voice(voice_stem, work_dir, device=actual_device, model=denoise_model, dry=denoise_dry)
+    print(f"[denoise] neural speech enhancement ({denoise_backend}/{denoise_model})")
+    denoised = denoise_voice(
+        voice_stem,
+        work_dir,
+        device=actual_device,
+        model=denoise_model,
+        dry=denoise_dry,
+        backend=denoise_backend,
+    )
     ref_out = None
     cleaned = audio_dir / "voice_clean.wav"
     polish_src = work_dir / "voice_before_polish.wav"
@@ -578,6 +626,7 @@ def main() -> int:
     parser.add_argument("--device", choices=["auto", "cuda", "mps", "cpu"], default="auto")
     parser.add_argument("--model", default="htdemucs_ft")
     parser.add_argument("--segment", type=int, default=7)
+    parser.add_argument("--denoise-backend", choices=["denoiser", "resemble-enhance"], default="denoiser")
     parser.add_argument("--denoise-model", choices=["dns48", "dns64", "master64", "valentini_nc"], default="dns64")
     parser.add_argument("--denoise-dry", type=float, default=0.0)
     parser.add_argument("--reference-audio", type=Path, default=None,
@@ -607,6 +656,7 @@ def main() -> int:
                 model=args.model,
                 segment=args.segment,
                 keep_instrumental=not args.no_instrumental,
+                denoise_backend=args.denoise_backend,
                 denoise_model=args.denoise_model,
                 denoise_dry=args.denoise_dry,
                 reference_audio=args.reference_audio,

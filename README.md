@@ -15,6 +15,7 @@ Maintained by Maslodium.
   AAC, OGG, OPUS and more.
 - Separates voice / no-voice stems through Demucs `--two-stems=vocals`.
 - Cleans speech with Facebook Research Denoiser.
+- Optional Resemble Enhance backend for experimental speech enhancement.
 - Can use a reference recording from the same shoot to match level, broad tone
   and soft dynamics.
 - Can apply reusable shoot/reference profiles and trained `model.pt` reference
@@ -79,10 +80,17 @@ py -3.12 -m venv .venv
 CPU machines can install Torch without the CUDA index. On macOS, use standard
 Torch wheels and `--device auto` or `--device mps`.
 
+Optional experimental backend:
+
+```powershell
+.\.venv\Scripts\python.exe install_optional.py --backend resemble-enhance
+```
+
 ## CLI
 
 ```powershell
 python pipeline.py input.mp4 --out output --device auto
+python pipeline.py input.mp4 --denoise-backend resemble-enhance --out output
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
 python pipeline.py camera.wav --reference-profile profiles/camera_lav.json --out output
 python pipeline.py camera.wav --reference-model models/community/model.pt --out output
@@ -116,6 +124,7 @@ checkpoint or aggregate reference profile instead of the source recordings.
 - Combined mode where paired training learns voice/noise transfer and shoot
   profiles adapt the model to a concrete camera, room and microphone setup.
 - Better no-reference speech enhancement before Demucs/after Demucs.
+- Optional DeepFilterNet/ONNX backend after packaging tests.
 - Real LUFS/true-peak metering.
 - Optional cloud training workflow through Hugging Face Jobs or other donated
   compute.
@@ -149,6 +158,7 @@ V-D означает VOICE-DENOISE. Программа достает аудио
   M4A, AAC, OGG, OPUS и других.
 - Разделение voice / no-voice через Demucs `--two-stems=vocals`.
 - Очистка речи через Facebook Research Denoiser.
+- Опциональный Resemble Enhance backend для experimental speech enhancement.
 - Подгонка уровня, широкого тембра и мягкой динамики по референсной записи из
   той же съемки.
 - Применение многоразовых shoot/reference profiles и обученных `model.pt`,
@@ -212,10 +222,17 @@ py -3.12 -m venv .venv
 На CPU можно ставить Torch без CUDA index. На macOS используйте обычные Torch
 wheels и `--device auto` или `--device mps`.
 
+Опциональный experimental backend:
+
+```powershell
+.\.venv\Scripts\python.exe install_optional.py --backend resemble-enhance
+```
+
 ## CLI
 
 ```powershell
 python pipeline.py input.mp4 --out output --device auto
+python pipeline.py input.mp4 --denoise-backend resemble-enhance --out output
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
 python pipeline.py camera.wav --reference-profile profiles/camera_lav.json --out output
 python pipeline.py camera.wav --reference-model models/community/model.pt --out output
@@ -250,6 +267,7 @@ python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models -
 - Combined mode: парное обучение учит transfer голоса/шума, а shoot profiles
   адаптируют модель под конкретную камеру, комнату и микрофон.
 - Лучшее no-reference speech enhancement до Demucs и после Demucs.
+- Опциональный DeepFilterNet/ONNX backend после packaging tests.
 - Настоящий LUFS/true-peak metering.
 - Опциональный cloud training workflow через Hugging Face Jobs или другие
   donated compute.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 import json
+from unittest import mock
 from pathlib import Path
 
 import numpy as np
@@ -171,6 +172,35 @@ class PipelineSmokeTests(unittest.TestCase):
             self.assertIn("camera", data)
             self.assertIn("reference", data)
             self.assertIn("transfer", data)
+
+    def test_resemble_backend_requires_optional_package(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            src = Path(td) / "voice.wav"
+            sf.write(str(src), np.zeros(1000, dtype=np.float32), 16000)
+            with mock.patch("pipeline.shutil.which", return_value=None):
+                with self.assertRaisesRegex(RuntimeError, "Resemble Enhance is not installed"):
+                    pipeline.denoise_voice_resemble(src, Path(td), device="cpu")
+
+    def test_resemble_backend_builds_cli_command(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            src = root / "voice.wav"
+            out_file = root / "_work" / "resemble_enhanced" / "voice_enhanced.wav"
+            sf.write(str(src), np.zeros(1000, dtype=np.float32), 16000)
+
+            def fake_run(cmd, cwd=None):
+                out_file.parent.mkdir(parents=True, exist_ok=True)
+                sf.write(str(out_file), np.zeros(1000, dtype=np.float32), 16000)
+
+            with mock.patch("pipeline.shutil.which", return_value="resemble-enhance"), \
+                 mock.patch("pipeline.run_command", side_effect=fake_run) as run:
+                result = pipeline.denoise_voice_resemble(src, root / "_work", device="mps")
+
+            self.assertEqual(result, out_file)
+            cmd = run.call_args.args[0]
+            self.assertIn("resemble-enhance", cmd[0])
+            self.assertIn("--device", cmd)
+            self.assertIn("cpu", cmd)
 
     def test_apply_reference_model_writes_wav(self) -> None:
         import torch
