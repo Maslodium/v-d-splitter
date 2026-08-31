@@ -199,6 +199,84 @@ def build_profile(dataset_dir: Path, out_json: Path) -> Path:
     return out_json
 
 
+def build_shoot_profile(dataset_dir: Path, out_json: Path) -> Path:
+    metadata = dataset_dir / "metadata.csv"
+    if not metadata.is_file():
+        raise FileNotFoundError(metadata)
+
+    sample_rate = 44100
+    fft_size = 8192
+    camera_specs: list[np.ndarray] = []
+    reference_specs: list[np.ndarray] = []
+    transfer_ratios: list[np.ndarray] = []
+    camera_rms: list[float] = []
+    reference_rms: list[float] = []
+    camera_floor: list[float] = []
+
+    with metadata.open("r", newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            camera = dataset_dir / row["camera"]
+            ref = dataset_dir / row["reference"]
+            y, sr = sf.read(str(camera), always_2d=True)
+            r, ref_sr = sf.read(str(ref), always_2d=True)
+            if sr != ref_sr:
+                continue
+            sample_rate = sr
+            y_mono = np.mean(y, axis=1)
+            r_mono = np.mean(r, axis=1)
+            n = min(len(y_mono), len(r_mono), sr * 45)
+            if n <= 4096:
+                continue
+
+            y_part = y_mono[:n]
+            r_part = r_mono[:n]
+            camera_rms.append(_rms_np(y_part))
+            reference_rms.append(_rms_np(r_part))
+            camera_floor.append(float(np.percentile(np.abs(y_part), 12)))
+
+            y_spec = np.abs(np.fft.rfft(y_part * np.hanning(n), n=fft_size)) + 1e-7
+            r_spec = np.abs(np.fft.rfft(r_part * np.hanning(n), n=fft_size)) + 1e-7
+            camera_specs.append(y_spec / max(np.median(y_spec), 1e-7))
+            reference_specs.append(r_spec / max(np.median(r_spec), 1e-7))
+            transfer_ratios.append(np.clip(r_spec / y_spec, 0.35, 2.8))
+
+    if not transfer_ratios:
+        raise RuntimeError("No usable shoot profile pairs found.")
+
+    kernel = np.ones(33, dtype=np.float64) / 33
+    transfer = np.convolve(np.mean(np.stack(transfer_ratios), axis=0), kernel, mode="same")
+    camera_tone = np.convolve(np.mean(np.stack(camera_specs), axis=0), kernel, mode="same")
+    reference_tone = np.convolve(np.mean(np.stack(reference_specs), axis=0), kernel, mode="same")
+    profile = {
+        "format": "v-d-shoot-profile-v1",
+        "sample_rate": sample_rate,
+        "fft_size": fft_size,
+        "pairs": len(transfer_ratios),
+        "camera": {
+            "rms": float(np.median(camera_rms)),
+            "noise_floor": float(np.median(camera_floor)),
+            "spectral_shape": [float(v) for v in camera_tone],
+        },
+        "reference": {
+            "rms": float(np.median(reference_rms)),
+            "spectral_shape": [float(v) for v in reference_tone],
+        },
+        "transfer": {
+            "rms_gain": float(np.clip(np.median(reference_rms) / max(np.median(camera_rms), 1e-7), 0.2, 5.0)),
+            "spectral_ratio": [float(v) for v in transfer],
+        },
+        "use_case": "Learn shoot/microphone character from other takes, then apply it to a lost-reference camera take.",
+    }
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    out_json.write_text(json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"[ok] shoot profile: {out_json}")
+    return out_json
+
+
+def _rms_np(x: np.ndarray) -> float:
+    return float(np.sqrt(np.mean(np.square(x), dtype=np.float64))) if x.size else 0.0
+
+
 def upload_to_hf(folder: Path, repo_id: str, repo_type: str = "dataset") -> None:
     if shutil.which("hf") is None:
         raise RuntimeError("Hugging Face CLI not found. Install with: python -m pip install huggingface_hub")
@@ -224,6 +302,10 @@ def main() -> int:
     prof.add_argument("--dataset-dir", type=Path, required=True)
     prof.add_argument("--out", type=Path, required=True)
 
+    shoot = sub.add_parser("build-shoot-profile")
+    shoot.add_argument("--dataset-dir", type=Path, required=True)
+    shoot.add_argument("--out", type=Path, required=True)
+
     up = sub.add_parser("upload")
     up.add_argument("--folder", type=Path, required=True)
     up.add_argument("--repo-id", required=True)
@@ -235,6 +317,8 @@ def main() -> int:
             prepare_dataset(args.camera_dir, args.reference_dir, args.out, args.dataset_name, args.license, args.maintainer, args.notes)
         elif args.cmd == "build-profile":
             build_profile(args.dataset_dir, args.out)
+        elif args.cmd == "build-shoot-profile":
+            build_shoot_profile(args.dataset_dir, args.out)
         elif args.cmd == "upload":
             upload_to_hf(args.folder, args.repo_id, args.repo_type)
     except Exception as exc:

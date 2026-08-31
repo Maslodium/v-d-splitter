@@ -103,6 +103,75 @@ class PipelineSmokeTests(unittest.TestCase):
             self.assertEqual(out_sr, sr)
             self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
 
+    def test_apply_shoot_profile_writes_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            src = Path(td) / "voice.wav"
+            profile = Path(td) / "shoot.json"
+            dst = Path(td) / "matched.wav"
+            sr = 16000
+            y = np.zeros(sr, dtype=np.float32)
+            y[100:200] = 0.1
+            sf.write(str(src), y, sr)
+            profile.write_text(json.dumps({
+                "format": "v-d-shoot-profile-v1",
+                "sample_rate": sr,
+                "fft_size": 8192,
+                "pairs": 2,
+                "camera": {
+                    "rms": 0.1,
+                    "noise_floor": 0.01,
+                    "spectral_shape": [1.0] * 4097,
+                },
+                "reference": {
+                    "rms": 0.2,
+                    "spectral_shape": [1.0] * 4097,
+                },
+                "transfer": {
+                    "rms_gain": 2.0,
+                    "spectral_ratio": [1.0] * 4097,
+                },
+            }), encoding="utf-8")
+
+            pipeline.apply_reference_profile(src, profile, dst, target_peak=0.5)
+
+            matched, out_sr = sf.read(str(dst), always_2d=False)
+            self.assertEqual(out_sr, sr)
+            self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
+
+    def test_build_shoot_profile_writes_transfer_profile(self) -> None:
+        import csv
+        import community_training
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            cam_dir = root / "data" / "train" / "camera"
+            ref_dir = root / "data" / "train" / "reference"
+            cam_dir.mkdir(parents=True)
+            ref_dir.mkdir(parents=True)
+            sr = 16000
+            t = np.linspace(0, 1, sr, endpoint=False, dtype=np.float32)
+            camera = 0.08 * np.sin(2 * np.pi * 260 * t)
+            reference = 0.18 * np.sin(2 * np.pi * 260 * t)
+            sf.write(str(cam_dir / "take01.wav"), camera, sr)
+            sf.write(str(ref_dir / "take01.wav"), reference, sr)
+            with (root / "metadata.csv").open("w", newline="", encoding="utf-8") as fh:
+                writer = csv.DictWriter(fh, fieldnames=["camera", "reference"])
+                writer.writeheader()
+                writer.writerow({
+                    "camera": "data/train/camera/take01.wav",
+                    "reference": "data/train/reference/take01.wav",
+                })
+
+            out = root / "shoot.json"
+            community_training.build_shoot_profile(root, out)
+
+            data = json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual(data["format"], "v-d-shoot-profile-v1")
+            self.assertEqual(data["pairs"], 1)
+            self.assertIn("camera", data)
+            self.assertIn("reference", data)
+            self.assertIn("transfer", data)
+
     def test_apply_reference_model_writes_wav(self) -> None:
         import torch
         from train_reference_model import SpectralMapper

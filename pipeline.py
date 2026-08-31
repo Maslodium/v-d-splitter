@@ -378,14 +378,22 @@ def apply_reference_profile(wav: Path, profile_json: Path, out_wav: Path,
     import soundfile as sf
 
     profile = json.loads(Path(profile_json).read_text(encoding="utf-8"))
-    if profile.get("format") != "v-d-reference-profile-v1":
+    profile_format = profile.get("format")
+    if profile_format not in {"v-d-reference-profile-v1", "v-d-shoot-profile-v1"}:
         raise ValueError(f"unsupported reference profile: {profile.get('format')}")
 
     y, sr = sf.read(str(wav), always_2d=True)
-    y = y * float(profile.get("rms_gain", 1.0))
+    if profile_format == "v-d-shoot-profile-v1":
+        transfer = profile.get("transfer", {})
+        rms_gain = float(transfer.get("rms_gain", 1.0))
+        spectral_ratio = transfer.get("spectral_ratio", [])
+    else:
+        rms_gain = float(profile.get("rms_gain", 1.0))
+        spectral_ratio = profile.get("spectral_ratio", [])
+    y = y * rms_gain
 
     fft_size = int(profile.get("fft_size", 8192))
-    ratio = np.asarray(profile.get("spectral_ratio", []), dtype=np.float64)
+    ratio = np.asarray(spectral_ratio, dtype=np.float64)
     if ratio.size == (fft_size // 2 + 1):
         source_freqs = np.fft.rfftfreq(fft_size, 1.0 / float(profile.get("sample_rate", sr)))
         target_n = max(fft_size, len(y))
@@ -509,6 +517,7 @@ def process_video(input_path: Path, out_root: Path, device: str = "auto",
     ref_out = None
     cleaned = audio_dir / "voice_clean.wav"
     polish_src = work_dir / "voice_before_polish.wav"
+    current_for_polish = denoised
     if reference_audio:
         reference_audio = Path(reference_audio)
         if not reference_audio.is_file():
@@ -516,20 +525,29 @@ def process_video(input_path: Path, out_root: Path, device: str = "auto",
         print(f"[match] reference tone/dynamics -> {reference_audio}")
         ref_out = extract_audio(reference_audio, audio_dir / "reference.wav")
         match_reference_voice(denoised, ref_out, polish_src)
-    elif reference_profile:
-        reference_profile = Path(reference_profile)
-        if not reference_profile.is_file():
-            raise FileNotFoundError(reference_profile)
-        print(f"[profile] applying reference profile -> {reference_profile}")
-        apply_reference_profile(denoised, reference_profile, polish_src)
-    elif reference_model:
-        reference_model = Path(reference_model)
-        if not reference_model.is_file():
-            raise FileNotFoundError(reference_model)
-        print(f"[model] applying reference model -> {reference_model}")
-        apply_reference_model(denoised, reference_model, polish_src)
+        current_for_polish = polish_src
     else:
-        normalize_voice(denoised, polish_src)
+        if reference_profile:
+            reference_profile = Path(reference_profile)
+            if not reference_profile.is_file():
+                raise FileNotFoundError(reference_profile)
+            print(f"[profile] applying reference/shoot profile -> {reference_profile}")
+            profile_out = work_dir / "profile_matched.wav"
+            apply_reference_profile(current_for_polish, reference_profile, profile_out)
+            current_for_polish = profile_out
+        if reference_model:
+            reference_model = Path(reference_model)
+            if not reference_model.is_file():
+                raise FileNotFoundError(reference_model)
+            print(f"[model] applying reference model -> {reference_model}")
+            model_out = work_dir / "model_matched.wav"
+            apply_reference_model(current_for_polish, reference_model, model_out)
+            current_for_polish = model_out
+        if current_for_polish == denoised:
+            normalize_voice(denoised, polish_src)
+            current_for_polish = polish_src
+        elif current_for_polish != polish_src:
+            shutil.copy2(current_for_polish, polish_src)
     print(f"[polish] preset={polish_preset} compressor={compressor} deesser={deesser} target_lufs={target_lufs}")
     polish_voice(
         polish_src,
@@ -565,7 +583,7 @@ def main() -> int:
     parser.add_argument("--reference-audio", type=Path, default=None,
                         help="same-shoot lav/recorder sample used for post-denoise tone and dynamics matching")
     parser.add_argument("--reference-profile", type=Path, default=None,
-                        help="profile JSON created by community_training.py build-profile")
+                        help="profile JSON created by community_training.py build-profile or build-shoot-profile")
     parser.add_argument("--reference-model", type=Path, default=None,
                         help="model.pt created by train_reference_model.py or downloaded from Hugging Face")
     parser.add_argument("--polish-preset", choices=sorted(POLISH_PRESETS), default="speech")

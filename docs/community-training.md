@@ -6,10 +6,10 @@ V-D Splitter can grow through paired same-shoot audio:
 camera audio -> lavalier/recorder reference
 ```
 
-The practical short-term target is not a huge public model first. The first
-target is shared dataset format, local reference profiles, resumable
-checkpoints, and small published models. A stronger restoration model can be
-trained later from the same folder format.
+The practical target combines two paths. Paired takes teach the model what
+camera noise and useful voice should become. Shoot profiles adapt that learned
+transfer to a concrete room, camera and microphone setup when the clean track
+for the target take is lost.
 
 Long-running training should be versioned rather than edited in-place. Keep the
 dataset in a Hugging Face dataset repository, train from checkpoints, publish
@@ -51,6 +51,17 @@ python community_training.py build-profile --dataset-dir vd_dataset --out profil
 This profile stores average RMS and spectral differences between camera and
 reference recordings. It is small and can be used locally. Share it only when
 you are comfortable treating it as a public derived artifact.
+
+## Build A Shoot Profile
+
+```powershell
+python community_training.py build-shoot-profile --dataset-dir vd_dataset --out profiles/shoot.json
+```
+
+A shoot profile is for the lost-audio case: the target take has only camera
+audio, while other takes from the same shoot still have camera/reference pairs.
+It stores camera tone, approximate noise floor, reference tone and the transfer
+ratio between them. It does not need the same words as the target take.
 
 ## Train The Baseline Model
 
@@ -96,10 +107,16 @@ Download a public model:
 python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
 ```
 
-Use it:
+Use a model alone:
 
 ```powershell
 python pipeline.py camera.wav --reference-model models/community/model.pt --out output
+```
+
+Use a shoot profile and model together:
+
+```powershell
+python pipeline.py lost_take_camera.wav --reference-profile profiles/shoot.json --reference-model models/community/model.pt --out output
 ```
 
 ## Upload Datasets
@@ -144,10 +161,10 @@ V-D Splitter можно развивать через парные записи 
 звук камеры -> петличка или рекордер
 ```
 
-Ближайшая практическая цель — не сразу огромная публичная модель. Сначала нужен
-общий формат датасета, локальные reference profiles, resumable checkpoints и
-небольшие опубликованные модели. Более сильную модель восстановления можно
-обучать позже из того же формата папок.
+Практическая цель совмещает два пути. Парные дубли учат модель тому, во что
+должны превращаться шум камеры и полезная нагрузка — голос. Shoot profiles
+адаптируют этот transfer под конкретную комнату, камеру и микрофон, когда
+чистая дорожка целевого дубля потеряна.
 
 Длительное обучение лучше вести версиями, а не перезаписью одного живого файла.
 Датасет растет в Hugging Face dataset repository, обучение продолжается из
@@ -190,6 +207,17 @@ python community_training.py build-profile --dataset-dir vd_dataset --out profil
 Профиль хранит среднюю разницу по громкости и спектру между камерой и
 референсом. Его можно использовать локально. Делиться им стоит только если вы
 готовы считать его публичным производным артефактом.
+
+## Профиль Съемки
+
+```powershell
+python community_training.py build-shoot-profile --dataset-dir vd_dataset --out profiles/shoot.json
+```
+
+Shoot profile нужен для аварийного случая: у целевого дубля есть только звук
+камеры, а у других дублей той же съемки сохранились пары камера/референс. Он
+хранит тембр камеры, примерный noise floor, тембр референса и transfer ratio
+между ними. Ему не нужны те же слова, что в целевом дубле.
 
 ## Обучение Baseline-Модели
 
@@ -235,10 +263,16 @@ python model_manager.py publish-model --folder models/camera_lav --repo-id Maslo
 python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
 ```
 
-Использовать ее:
+Использовать только модель:
 
 ```powershell
 python pipeline.py camera.wav --reference-model models/community/model.pt --out output
+```
+
+Использовать shoot profile и модель вместе:
+
+```powershell
+python pipeline.py lost_take_camera.wav --reference-profile profiles/shoot.json --reference-model models/community/model.pt --out output
 ```
 
 ## Загрузка Датасетов

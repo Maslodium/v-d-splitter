@@ -531,7 +531,7 @@ class App:
         if profile and not ref:
             cmd.extend(["--reference-profile", profile])
         model = self.model_path.get().strip()
-        if model and not ref and not profile:
+        if model and not ref:
             cmd.extend(["--reference-model", model])
         if not self.keep_bg.get():
             cmd.append("--no-instrumental")

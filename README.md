@@ -17,8 +17,9 @@ Maintained by Maslodium.
 - Cleans speech with Facebook Research Denoiser.
 - Can use a reference recording from the same shoot to match level, broad tone
   and soft dynamics.
-- Can apply reusable reference profiles and trained `model.pt` reference
-  models.
+- Can apply reusable shoot/reference profiles and trained `model.pt` reference
+  models, including a profile learned from other takes when the target lav track
+  was lost.
 - Voice polish stage with compressor, de-esser, peak limiter and approximate
   loudness matching.
 - Folder input for batch processing supported audio/video files.
@@ -93,6 +94,7 @@ python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```powershell
 python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
 python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
+python community_training.py build-shoot-profile --dataset-dir vd_dataset --out profiles/shoot.json
 python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
 python model_manager.py publish-model --folder models/camera_lav --repo-id Maslodium/v-d-splitter-models
 python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
@@ -111,6 +113,8 @@ checkpoint or aggregate reference profile instead of the source recordings.
 
 - Stronger open restoration model trained on community paired camera/reference
   material.
+- Combined mode where paired training learns voice/noise transfer and shoot
+  profiles adapt the model to a concrete camera, room and microphone setup.
 - Better no-reference speech enhancement before Demucs/after Demucs.
 - Real LUFS/true-peak metering.
 - Optional cloud training workflow through Hugging Face Jobs or other donated
@@ -147,7 +151,8 @@ V-D означает VOICE-DENOISE. Программа достает аудио
 - Очистка речи через Facebook Research Denoiser.
 - Подгонка уровня, широкого тембра и мягкой динамики по референсной записи из
   той же съемки.
-- Применение многоразовых reference profiles и обученных `model.pt`.
+- Применение многоразовых shoot/reference profiles и обученных `model.pt`,
+  включая профиль по другим дублям, когда петличка целевого дубля потеряна.
 - Финальная обработка голоса: compressor, de-esser, peak limiter и примерное
   loudness matching.
 - Обработка папки с поддержанными аудио/видео файлами.
@@ -222,6 +227,7 @@ python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```powershell
 python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
 python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
+python community_training.py build-shoot-profile --dataset-dir vd_dataset --out profiles/shoot.json
 python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
 python model_manager.py publish-model --folder models/camera_lav --repo-id Maslodium/v-d-splitter-models
 python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
@@ -241,6 +247,8 @@ python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models -
 
 - Более сильная открытая restoration model, обученная на community paired
   camera/reference material.
+- Combined mode: парное обучение учит transfer голоса/шума, а shoot profiles
+  адаптируют модель под конкретную камеру, комнату и микрофон.
 - Лучшее no-reference speech enhancement до Demucs и после Demucs.
 - Настоящий LUFS/true-peak metering.
 - Опциональный cloud training workflow через Hugging Face Jobs или другие
