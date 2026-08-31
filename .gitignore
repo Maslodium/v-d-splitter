@@ -9,6 +9,7 @@ V-D-Splitter-linux/
 input/
 output/
 work/
+profiles/
 settings.json
 *.wav
 *.mp3

@@ -10,6 +10,10 @@ The practical short-term target is not a huge public model first. The first
 target is shared datasets and local reference profiles. A stronger restoration
 model can be trained later from the same folder format.
 
+Long-running training should be versioned rather than edited in-place. Keep the
+dataset in a Hugging Face dataset repository, train from checkpoints, publish
+new model revisions/tags, and keep older releases available for comparison.
+
 ## Prepare A Dataset
 
 Put files with matching names into two folders:
@@ -46,6 +50,30 @@ python community_training.py build-profile --dataset-dir vd_dataset --out profil
 This profile stores average RMS and spectral differences between camera and
 reference recordings. It is small, local and safe to share when the underlying
 audio cannot be published.
+
+## Train The Baseline Model
+
+```powershell
+python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
+```
+
+Resume later:
+
+```powershell
+python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --resume models/camera_lav/checkpoint.pt --epochs 16
+```
+
+The baseline writes:
+
+```text
+models/camera_lav/checkpoint.pt
+models/camera_lav/model.pt
+models/camera_lav/README.md
+```
+
+This is deliberately small. A 3 GB universal model may become useful later, but
+community work should start with datasets, checkpoints, smaller profiles and
+repeatable training runs.
 
 ## Upload To Hugging Face
 
@@ -85,6 +113,10 @@ V-D Splitter можно развивать через парные записи 
 локальные reference profiles. Потом по тем же папкам можно обучать более
 сильную модель восстановления.
 
+Длительное обучение лучше вести версиями, а не перезаписью одного живого файла.
+Датасет растёт в Hugging Face dataset repository, обучение продолжается из
+checkpoints, а модель публикуется новыми revisions/tags.
+
 ## Подготовка Датасета
 
 Положите файлы с одинаковыми именами в две папки:
@@ -121,6 +153,30 @@ python community_training.py build-profile --dataset-dir vd_dataset --out profil
 Профиль хранит среднюю разницу по громкости и спектру между камерой и
 референсом. Его можно использовать локально или делиться им, если исходные
 записи публиковать нельзя.
+
+## Обучение Baseline-Модели
+
+```powershell
+python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
+```
+
+Продолжить позже:
+
+```powershell
+python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --resume models/camera_lav/checkpoint.pt --epochs 16
+```
+
+На выходе:
+
+```text
+models/camera_lav/checkpoint.pt
+models/camera_lav/model.pt
+models/camera_lav/README.md
+```
+
+Это специально маленькая baseline-модель. Большая универсальная модель на
+несколько гигабайт может понадобиться позже, но комьюнити лучше начинать с
+датасетов, checkpoints, небольших профилей и воспроизводимых запусков обучения.
 
 ## Загрузка На Hugging Face
 

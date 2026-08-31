@@ -23,6 +23,8 @@ Maintained by Maslodium.
   loudness matching.
 - Folder input for batch processing supported audio/video files.
 - Community dataset tooling for Hugging Face style paired audio datasets.
+- Baseline training script with checkpoint resume for camera-to-reference
+  experiments.
 - Saves `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`, optional
   `background_no_voice.wav` and optional `reference.wav`.
 - Selects CUDA or CPU Torch wheels during Windows bootstrap install.
@@ -89,6 +91,7 @@ python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```powershell
 python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
 python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
+python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
 python community_training.py upload --folder vd_dataset --repo-id Maslodium/vd-same-shoot-pairs --repo-type dataset
 ```
 
@@ -135,6 +138,8 @@ V-D означает VOICE-DENOISE. Программа достаёт аудио
   loudness matching.
 - Обработка папки с поддержанными аудио/видео файлами.
 - Инструмент подготовки community dataset в формате, удобном для Hugging Face.
+- Baseline-скрипт обучения с resume из checkpoint для экспериментов
+  `camera -> reference`.
 - Сохранение `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`,
   опционально `background_no_voice.wav` и `reference.wav`.
 - Выбор CUDA или CPU Torch во время Windows bootstrap install.
@@ -198,6 +203,7 @@ python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```powershell
 python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
 python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
+python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
 python community_training.py upload --folder vd_dataset --repo-id Maslodium/vd-same-shoot-pairs --repo-type dataset
 ```
 
