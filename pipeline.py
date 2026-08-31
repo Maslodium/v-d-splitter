@@ -402,6 +402,67 @@ def apply_reference_profile(wav: Path, profile_json: Path, out_wav: Path,
     return out_wav
 
 
+def apply_reference_model(wav: Path, model_path: Path, out_wav: Path,
+                          target_peak: float = 0.95) -> Path:
+    import numpy as np
+    import torch
+    import soundfile as sf
+    from train_reference_model import SpectralMapper
+
+    data = torch.load(model_path, map_location="cpu")
+    if data.get("format") != "v-d-spectral-mapper-v1":
+        raise ValueError(f"unsupported reference model: {data.get('format')}")
+    cfg = data["config"]
+    n_fft = int(cfg.get("n_fft", 1024))
+    hop = int(cfg.get("hop_length", 256))
+    sample_rate = int(cfg.get("sample_rate", 16000))
+    hidden = int(cfg.get("hidden", 512))
+
+    y, sr = sf.read(str(wav), always_2d=True)
+    if sr != sample_rate:
+        import librosa
+
+        y = np.stack([librosa.resample(y[:, ch], orig_sr=sr, target_sr=sample_rate)
+                      for ch in range(y.shape[1])], axis=1)
+        sr = sample_rate
+
+    model = SpectralMapper(n_fft // 2 + 1, hidden)
+    model.load_state_dict(data["model_state_dict"])
+    model.eval()
+    window = torch.hann_window(n_fft)
+    out = []
+    with torch.no_grad():
+        for ch in range(y.shape[1]):
+            wav_t = torch.from_numpy(y[:, ch].astype(np.float32))
+            spec = torch.stft(
+                wav_t,
+                n_fft=n_fft,
+                hop_length=hop,
+                win_length=n_fft,
+                window=window,
+                return_complex=True,
+            )
+            mag = spec.abs().transpose(0, 1)
+            phase = torch.angle(spec).transpose(0, 1)
+            pred = model(torch.log1p(mag)).clamp(-2.0, 2.0)
+            new_mag = torch.expm1(torch.log1p(mag) + pred).clamp_min(0)
+            rebuilt = torch.polar(new_mag, phase).transpose(0, 1)
+            enhanced = torch.istft(
+                rebuilt,
+                n_fft=n_fft,
+                hop_length=hop,
+                win_length=n_fft,
+                window=window,
+                length=len(wav_t),
+            )
+            out.append(enhanced.numpy())
+    y_out = np.stack(out, axis=1)
+    y_out = limit_peak(y_out, target_peak)
+    out_wav.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(out_wav), y_out.squeeze() if y_out.shape[1] == 1 else y_out, sr)
+    return out_wav
+
+
 def process_video(input_path: Path, out_root: Path, device: str = "auto",
                   model: str = "htdemucs_ft", segment: int = 7,
                   keep_instrumental: bool = True,
@@ -409,6 +470,7 @@ def process_video(input_path: Path, out_root: Path, device: str = "auto",
                   denoise_dry: float = 0.0,
                   reference_audio: Path | None = None,
                   reference_profile: Path | None = None,
+                  reference_model: Path | None = None,
                   polish_preset: str = "speech",
                   compressor: bool = True,
                   deesser: bool = True,
@@ -460,6 +522,12 @@ def process_video(input_path: Path, out_root: Path, device: str = "auto",
             raise FileNotFoundError(reference_profile)
         print(f"[profile] applying reference profile -> {reference_profile}")
         apply_reference_profile(denoised, reference_profile, polish_src)
+    elif reference_model:
+        reference_model = Path(reference_model)
+        if not reference_model.is_file():
+            raise FileNotFoundError(reference_model)
+        print(f"[model] applying reference model -> {reference_model}")
+        apply_reference_model(denoised, reference_model, polish_src)
     else:
         normalize_voice(denoised, polish_src)
     print(f"[polish] preset={polish_preset} compressor={compressor} deesser={deesser} target_lufs={target_lufs}")
@@ -498,6 +566,8 @@ def main() -> int:
                         help="same-shoot lav/recorder sample used for post-denoise tone and dynamics matching")
     parser.add_argument("--reference-profile", type=Path, default=None,
                         help="profile JSON created by community_training.py build-profile")
+    parser.add_argument("--reference-model", type=Path, default=None,
+                        help="model.pt created by train_reference_model.py or downloaded from Hugging Face")
     parser.add_argument("--polish-preset", choices=sorted(POLISH_PRESETS), default="speech")
     parser.add_argument("--no-compressor", action="store_true")
     parser.add_argument("--no-deesser", action="store_true")
@@ -523,6 +593,7 @@ def main() -> int:
                 denoise_dry=args.denoise_dry,
                 reference_audio=args.reference_audio,
                 reference_profile=args.reference_profile,
+                reference_model=args.reference_model,
                 polish_preset=args.polish_preset,
                 compressor=not args.no_compressor,
                 deesser=not args.no_deesser,

@@ -30,7 +30,7 @@ jobs:
           .venv/bin/python -m pip install --upgrade pip setuptools wheel
           .venv/bin/python -m pip install torch==2.6.0 torchaudio==2.6.0
           .venv/bin/python -m pip install -r requirements.txt
-          .venv/bin/python -m py_compile pipeline.py gui.py installer/bootstrap_installer_linux.py
+          .venv/bin/python -m py_compile pipeline.py gui.py community_training.py train_reference_model.py model_manager.py installer/bootstrap_installer_linux.py
           .venv/bin/python -m unittest discover -s tests
 
       - name: Build Linux archive

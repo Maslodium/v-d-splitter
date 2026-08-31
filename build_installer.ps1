@@ -9,7 +9,7 @@ $Payload = Join-Path $Root "payload"
 if (Test-Path $Payload) { Remove-Item -Recurse -Force $Payload }
 New-Item -ItemType Directory -Force $Payload | Out-Null
 Get-ChildItem $Root -Force | Where-Object {
-  $_.Name -notin @(".git", ".venv", "build", "dist", "payload", "__pycache__") -and
+  $_.Name -notin @(".git", ".venv", "build", "dist", "payload", "__pycache__", "input", "output", "work", "settings.json") -and
   $_.Name -notlike "*.spec"
 } | ForEach-Object {
   $dest = Join-Path $Payload $_.Name

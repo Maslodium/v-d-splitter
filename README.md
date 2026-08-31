@@ -17,14 +17,15 @@ Maintained by Maslodium.
 - Cleans speech with Facebook Research Denoiser.
 - Can use a reference recording from the same shoot to match level, broad tone
   and soft dynamics.
-- Can apply a reusable reference profile built from multiple camera/reference
-  pairs.
+- Can apply reusable reference profiles and trained `model.pt` reference
+  models.
 - Voice polish stage with compressor, de-esser, peak limiter and approximate
   loudness matching.
 - Folder input for batch processing supported audio/video files.
 - Community dataset tooling for Hugging Face style paired audio datasets.
 - Baseline training script with checkpoint resume for camera-to-reference
   experiments.
+- Explicit Hugging Face model download/publish commands.
 - Saves `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`, optional
   `background_no_voice.wav` and optional `reference.wav`.
 - Selects CUDA or CPU Torch wheels during Windows bootstrap install.
@@ -32,7 +33,7 @@ Maintained by Maslodium.
 
 ## Requirements
 
-- Windows 10/11 or macOS.
+- Windows 10/11, macOS or Linux.
 - Python 3.10+ available through the system launcher.
 - Internet connection on first install for Python packages, Torch wheels,
   Demucs/Denoiser weights and ffmpeg support.
@@ -83,6 +84,7 @@ Torch wheels and `--device auto` or `--device mps`.
 python pipeline.py input.mp4 --out output --device auto
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
 python pipeline.py camera.wav --reference-profile profiles/camera_lav.json --out output
+python pipeline.py camera.wav --reference-model models/community/model.pt --out output
 python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```
 
@@ -92,21 +94,34 @@ python pipeline.py takes_folder --polish-preset camera-hiss --out output
 python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
 python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
 python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
-python community_training.py upload --folder vd_dataset --repo-id Maslodium/vd-same-shoot-pairs --repo-type dataset
+python model_manager.py publish-model --folder models/camera_lav --repo-id Maslodium/v-d-splitter-models
+python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
 ```
 
 See `docs/community-training.md`.
 
+## Privacy
+
+The program does not upload recordings, datasets, checkpoints or profiles by
+itself. Publishing to Hugging Face is an explicit command. Only publish material
+you have rights to share. If raw audio is private, share a trained model,
+checkpoint or aggregate reference profile instead of the source recordings.
+
 ## Possible Improvements
 
-- Learned camera-to-lav restoration profile.
+- Stronger open restoration model trained on community paired camera/reference
+  material.
+- Better no-reference speech enhancement before Demucs/after Demucs.
 - Real LUFS/true-peak metering.
+- Optional cloud training workflow through Hugging Face Jobs or other donated
+  compute.
 - Export presets for podcast, YouTube, broadcast and dialogue edit.
 
 ## Notes
 
 Reference Match currently performs conservative level, broad spectral and soft
-dynamics matching. It is not yet a trained camera-to-lav restoration model.
+dynamics matching. The baseline `model.pt` path is experimental and intended as
+a foundation for community training, not an Auphonic-level model yet.
 
 Check upstream model/code licenses before redistributing pretrained weights or
 commercial bundles.
@@ -117,9 +132,9 @@ commercial bundles.
 
 Настольная утилита для извлечения и очистки голоса из видео и аудио.
 
-V-D означает VOICE-DENOISE. Программа достаёт аудио через ffmpeg, отделяет
-голос через Demucs, чистит его локальным нейросетевым denoiser и может
-подгонять результат под образец с петлички или рекордера из той же съёмки.
+V-D означает VOICE-DENOISE. Программа достает аудио через ffmpeg, отделяет
+голосовой stem через Demucs, чистит его локальным нейросетевым denoiser и может
+подгонять результат под запись с петлички или рекордера из той же съемки.
 
 Поддерживает Maslodium.
 
@@ -127,19 +142,19 @@ V-D означает VOICE-DENOISE. Программа достаёт аудио
 
 - Импорт видео и аудио через ffmpeg / `imageio-ffmpeg`.
 - Поддержка популярных форматов: MP4, MKV, MOV, AVI, WEBM, WMV, MP3, WAV, FLAC,
-  M4A, AAC, OGG, OPUS и другие.
+  M4A, AAC, OGG, OPUS и других.
 - Разделение voice / no-voice через Demucs `--two-stems=vocals`.
 - Очистка речи через Facebook Research Denoiser.
 - Подгонка уровня, широкого тембра и мягкой динамики по референсной записи из
-  той же съёмки.
-- Применение многоразового reference profile, собранного по нескольким парам
-  камера/референс.
+  той же съемки.
+- Применение многоразовых reference profiles и обученных `model.pt`.
 - Финальная обработка голоса: compressor, de-esser, peak limiter и примерное
   loudness matching.
 - Обработка папки с поддержанными аудио/видео файлами.
-- Инструмент подготовки community dataset в формате, удобном для Hugging Face.
+- Инструменты подготовки community dataset в формате, удобном для Hugging Face.
 - Baseline-скрипт обучения с resume из checkpoint для экспериментов
   `camera -> reference`.
+- Явные команды скачивания и публикации моделей через Hugging Face.
 - Сохранение `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`,
   опционально `background_no_voice.wav` и `reference.wav`.
 - Выбор CUDA или CPU Torch во время Windows bootstrap install.
@@ -147,7 +162,7 @@ V-D означает VOICE-DENOISE. Программа достаёт аудио
 
 ## Требования
 
-- Windows 10/11 или macOS.
+- Windows 10/11, macOS или Linux.
 - Python 3.10+ в системном запускателе.
 - Интернет при первой установке для Python-пакетов, Torch, весов моделей и
   ffmpeg.
@@ -189,12 +204,16 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\pythonw.exe gui.py
 ```
 
+На CPU можно ставить Torch без CUDA index. На macOS используйте обычные Torch
+wheels и `--device auto` или `--device mps`.
+
 ## CLI
 
 ```powershell
 python pipeline.py input.mp4 --out output --device auto
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
 python pipeline.py camera.wav --reference-profile profiles/camera_lav.json --out output
+python pipeline.py camera.wav --reference-model models/community/model.pt --out output
 python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```
 
@@ -204,21 +223,35 @@ python pipeline.py takes_folder --polish-preset camera-hiss --out output
 python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
 python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
 python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
-python community_training.py upload --folder vd_dataset --repo-id Maslodium/vd-same-shoot-pairs --repo-type dataset
+python model_manager.py publish-model --folder models/camera_lav --repo-id Maslodium/v-d-splitter-models
+python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
 ```
 
 Подробнее: `docs/community-training.md`.
 
-## Возможные Доработки
+## Приватность
 
-- Обучаемый профиль восстановления `camera -> lav`.
+Программа не загружает записи, датасеты, checkpoints или profiles сама.
+Публикация на Hugging Face выполняется только явной командой. Публикуйте только
+материалы, на которые у вас есть права. Если исходное аудио приватное, лучше
+делиться обученной моделью, checkpoint или aggregate reference profile, а не
+исходными записями.
+
+## Возможные доработки
+
+- Более сильная открытая restoration model, обученная на community paired
+  camera/reference material.
+- Лучшее no-reference speech enhancement до Demucs и после Demucs.
 - Настоящий LUFS/true-peak metering.
+- Опциональный cloud training workflow через Hugging Face Jobs или другие
+  donated compute.
 - Export presets для подкаста, YouTube, broadcast и диалогового монтажа.
 
 ## Примечания
 
 Reference Match сейчас делает аккуратное выравнивание громкости, широкого тембра
-и мягкой динамики. Это ещё не обученная модель восстановления `camera -> lav`.
+и мягкой динамики. Путь с baseline `model.pt` экспериментальный: это фундамент
+для community training, а не модель уровня Auphonic на текущем этапе.
 
 Перед распространением весов моделей или коммерческой сборкой нужно отдельно
 проверить лицензии upstream-проектов.

@@ -7,8 +7,9 @@ camera audio -> lavalier/recorder reference
 ```
 
 The practical short-term target is not a huge public model first. The first
-target is shared datasets and local reference profiles. A stronger restoration
-model can be trained later from the same folder format.
+target is shared dataset format, local reference profiles, resumable
+checkpoints, and small published models. A stronger restoration model can be
+trained later from the same folder format.
 
 Long-running training should be versioned rather than edited in-place. Keep the
 dataset in a Hugging Face dataset repository, train from checkpoints, publish
@@ -48,8 +49,8 @@ python community_training.py build-profile --dataset-dir vd_dataset --out profil
 ```
 
 This profile stores average RMS and spectral differences between camera and
-reference recordings. It is small, local and safe to share when the underlying
-audio cannot be published.
+reference recordings. It is small and can be used locally. Share it only when
+you are comfortable treating it as a public derived artifact.
 
 ## Train The Baseline Model
 
@@ -75,7 +76,7 @@ This is deliberately small. A 3 GB universal model may become useful later, but
 community work should start with datasets, checkpoints, smaller profiles and
 repeatable training runs.
 
-## Upload To Hugging Face
+## Publish And Download Models
 
 Login once:
 
@@ -83,39 +84,75 @@ Login once:
 hf auth login
 ```
 
-Upload a dataset:
+Publish a model folder:
 
 ```powershell
-python community_training.py upload --folder vd_dataset --repo-id Maslodium/vd-same-shoot-pairs --repo-type dataset
+python model_manager.py publish-model --folder models/camera_lav --repo-id Maslodium/v-d-splitter-models
 ```
 
-Hugging Face supports model and dataset repositories, dataset cards, model cards
-and CLI uploads. Audio datasets can be uploaded as raw audio files with metadata
-or packaged for larger scale.
+Download a public model:
 
-## Consent And Rights
+```powershell
+python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
+```
 
-Only publish material you have rights to share. Do not upload private voices,
-client footage, unreleased film material or identifiable recordings without
-explicit permission.
+Use it:
+
+```powershell
+python pipeline.py camera.wav --reference-model models/community/model.pt --out output
+```
+
+## Upload Datasets
+
+Upload a dataset only when the audio can be published:
+
+```powershell
+python model_manager.py publish-dataset --folder vd_dataset --repo-id Maslodium/v-d-splitter-community
+```
+
+Hugging Face supports model and dataset repositories, model cards, dataset
+cards, CLI uploads, pull requests/discussions, and Jobs for cloud-side runs.
+That makes it a good place to host public versions of the work, but it should
+not be treated as a silent telemetry backend.
+
+## Privacy Model
+
+Default behavior:
+
+- No automatic upload.
+- No background dataset sync.
+- No hidden contribution of user recordings.
+
+Safe contribution path:
+
+- Train locally or on explicitly chosen cloud compute.
+- Publish only the model/checkpoint/profile when it is acceptable for the
+  result to be public.
+- Publish raw paired audio only when every voice and project owner has agreed.
+
+Even trained weights can sometimes leak information about training data. Treat
+models and profiles as derived public artifacts, not as guaranteed anonymized
+secrets.
 
 ---
 
 # Community Training
 
-V-D Splitter можно развивать через парные записи с одной съёмки:
+V-D Splitter можно развивать через парные записи с одной съемки:
 
 ```text
 звук камеры -> петличка или рекордер
 ```
 
-Ближайшая цель - не сразу большая публичная модель, а общий формат датасетов и
-локальные reference profiles. Потом по тем же папкам можно обучать более
-сильную модель восстановления.
+Ближайшая практическая цель — не сразу огромная публичная модель. Сначала нужен
+общий формат датасета, локальные reference profiles, resumable checkpoints и
+небольшие опубликованные модели. Более сильную модель восстановления можно
+обучать позже из того же формата папок.
 
 Длительное обучение лучше вести версиями, а не перезаписью одного живого файла.
-Датасет растёт в Hugging Face dataset repository, обучение продолжается из
-checkpoints, а модель публикуется новыми revisions/tags.
+Датасет растет в Hugging Face dataset repository, обучение продолжается из
+checkpoints, а модель публикуется новыми revisions/tags. Старые релизы остаются
+доступны для сравнения.
 
 ## Подготовка Датасета
 
@@ -151,8 +188,8 @@ python community_training.py build-profile --dataset-dir vd_dataset --out profil
 ```
 
 Профиль хранит среднюю разницу по громкости и спектру между камерой и
-референсом. Его можно использовать локально или делиться им, если исходные
-записи публиковать нельзя.
+референсом. Его можно использовать локально. Делиться им стоит только если вы
+готовы считать его публичным производным артефактом.
 
 ## Обучение Baseline-Модели
 
@@ -174,11 +211,11 @@ models/camera_lav/model.pt
 models/camera_lav/README.md
 ```
 
-Это специально маленькая baseline-модель. Большая универсальная модель на
+Это специально небольшая baseline-модель. Большая универсальная модель на
 несколько гигабайт может понадобиться позже, но комьюнити лучше начинать с
 датасетов, checkpoints, небольших профилей и воспроизводимых запусков обучения.
 
-## Загрузка На Hugging Face
+## Публикация И Скачивание Моделей
 
 Один раз авторизоваться:
 
@@ -186,17 +223,52 @@ models/camera_lav/README.md
 hf auth login
 ```
 
-Загрузить датасет:
+Опубликовать папку модели:
 
 ```powershell
-python community_training.py upload --folder vd_dataset --repo-id Maslodium/vd-same-shoot-pairs --repo-type dataset
+python model_manager.py publish-model --folder models/camera_lav --repo-id Maslodium/v-d-splitter-models
 ```
 
-Hugging Face подходит для model repos, dataset repos, model cards, dataset cards
-и загрузки через CLI. Аудиодатасеты можно хранить как raw audio + metadata.
+Скачать публичную модель:
 
-## Права И Согласие
+```powershell
+python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
+```
 
-Публикуйте только материалы, на которые есть права. Не загружайте частные
-голоса, клиентские съёмки, невыпущенные материалы и узнаваемые записи без
-явного разрешения.
+Использовать ее:
+
+```powershell
+python pipeline.py camera.wav --reference-model models/community/model.pt --out output
+```
+
+## Загрузка Датасетов
+
+Загружайте датасет только когда аудио можно публиковать:
+
+```powershell
+python model_manager.py publish-dataset --folder vd_dataset --repo-id Maslodium/v-d-splitter-community
+```
+
+Hugging Face подходит для model repos, dataset repos, model cards, dataset
+cards, CLI uploads, pull requests/discussions и Jobs для cloud-side runs. Это
+хорошее место для публичных версий работы, но не скрытый telemetry backend.
+
+## Модель Приватности
+
+Поведение по умолчанию:
+
+- Нет автоматической загрузки.
+- Нет фоновой синхронизации датасета.
+- Нет скрытого вклада пользовательских записей.
+
+Безопасный путь вклада:
+
+- Обучить локально или на явно выбранных cloud compute.
+- Публиковать только model/checkpoint/profile, если допустимо считать результат
+  публичным.
+- Публиковать raw paired audio только если все голоса и владельцы проекта дали
+  согласие.
+
+Даже веса модели иногда могут раскрывать информацию о тренировочных данных.
+Относитесь к моделям и профилям как к производным публичным артефактам, а не
+как к гарантированно анонимизированным секретам.

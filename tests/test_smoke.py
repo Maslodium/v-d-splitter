@@ -103,6 +103,41 @@ class PipelineSmokeTests(unittest.TestCase):
             self.assertEqual(out_sr, sr)
             self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
 
+    def test_apply_reference_model_writes_wav(self) -> None:
+        import torch
+        from train_reference_model import SpectralMapper
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            src = root / "voice.wav"
+            model_path = root / "model.pt"
+            dst = root / "matched.wav"
+            sr = 16000
+            n_fft = 256
+            hidden = 16
+            t = np.linspace(0, 0.5, sr // 2, endpoint=False, dtype=np.float32)
+            y = 0.1 * np.sin(2 * np.pi * 260 * t)
+            sf.write(str(src), y, sr)
+
+            model = SpectralMapper(n_fft // 2 + 1, hidden)
+            torch.save({
+                "format": "v-d-spectral-mapper-v1",
+                "config": {
+                    "sample_rate": sr,
+                    "n_fft": n_fft,
+                    "hop_length": 64,
+                    "hidden": hidden,
+                },
+                "model_state_dict": model.state_dict(),
+            }, model_path)
+
+            pipeline.apply_reference_model(src, model_path, dst, target_peak=0.5)
+
+            matched, out_sr = sf.read(str(dst), always_2d=False)
+            self.assertEqual(out_sr, sr)
+            self.assertGreater(len(matched), 0)
+            self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
+
 
 if __name__ == "__main__":
     unittest.main()
