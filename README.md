@@ -103,10 +103,16 @@ python pipeline.py takes_folder --polish-preset camera-hiss --out output
 python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
 python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
 python community_training.py build-shoot-profile --dataset-dir vd_dataset --out profiles/shoot.json
+python model_manager.py create-seed-model --out models/seed
+python model_manager.py publish-model --folder models/seed --repo-id Maslodium/v-d-splitter-models --create-repo
 python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
 python model_manager.py publish-model --folder models/camera_lav --repo-id Maslodium/v-d-splitter-models
 python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
 ```
+
+The seed model is intentionally untrained. It is useful for creating an empty
+Hugging Face model repository and checking the app/model loading path before
+real community training produces useful weights.
 
 See `docs/community-training.md`.
 
@@ -245,10 +251,16 @@ python pipeline.py takes_folder --polish-preset camera-hiss --out output
 python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
 python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
 python community_training.py build-shoot-profile --dataset-dir vd_dataset --out profiles/shoot.json
+python model_manager.py create-seed-model --out models/seed
+python model_manager.py publish-model --folder models/seed --repo-id Maslodium/v-d-splitter-models --create-repo
 python train_reference_model.py --dataset-dir vd_dataset --out models/camera_lav --epochs 8
 python model_manager.py publish-model --folder models/camera_lav --repo-id Maslodium/v-d-splitter-models
 python model_manager.py download-model --repo-id Maslodium/v-d-splitter-models --out models/community/model.pt
 ```
+
+Seed-модель специально необученная. Она нужна, чтобы создать пустой Hugging Face
+model repository и проверить путь загрузки модели в программе до появления
+полезных весов после настоящего community training.
 
 Подробнее: `docs/community-training.md`.
 

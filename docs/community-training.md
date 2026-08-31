@@ -87,6 +87,26 @@ This is deliberately small. A 3 GB universal model may become useful later, but
 community work should start with datasets, checkpoints, smaller profiles and
 repeatable training runs.
 
+## Seed An Empty Model Repository
+
+If the Hugging Face account has no V-D model repository yet, create a valid
+untrained seed model first:
+
+```powershell
+python model_manager.py create-seed-model --out models/seed
+```
+
+Then publish it:
+
+```powershell
+hf auth login
+python model_manager.py publish-model --folder models/seed --repo-id Maslodium/v-d-splitter-models --create-repo
+```
+
+The seed is not a quality model. It only gives the project a correct `model.pt`,
+model card and manifest so downloads, releases and inference can be tested
+before real training replaces the weights.
+
 ## Publish And Download Models
 
 Login once:
@@ -242,6 +262,26 @@ models/camera_lav/README.md
 Это специально небольшая baseline-модель. Большая универсальная модель на
 несколько гигабайт может понадобиться позже, но комьюнити лучше начинать с
 датасетов, checkpoints, небольших профилей и воспроизводимых запусков обучения.
+
+## Старт Пустого Репозитория Модели
+
+Если в Hugging Face аккаунте еще нет model repository для V-D, сначала создайте
+валидную необученную seed-модель:
+
+```powershell
+python model_manager.py create-seed-model --out models/seed
+```
+
+Затем опубликуйте ее:
+
+```powershell
+hf auth login
+python model_manager.py publish-model --folder models/seed --repo-id Maslodium/v-d-splitter-models --create-repo
+```
+
+Seed не является качественной моделью. Он только дает проекту правильный
+`model.pt`, model card и manifest, чтобы проверить скачивание, релизы и
+inference до замены весов настоящим обучением.
 
 ## Публикация И Скачивание Моделей
 

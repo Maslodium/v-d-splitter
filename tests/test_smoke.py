@@ -237,6 +237,41 @@ class PipelineSmokeTests(unittest.TestCase):
             self.assertGreater(len(matched), 0)
             self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
 
+    def test_create_seed_model_writes_usable_artifacts(self) -> None:
+        import torch
+        import model_manager
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            seed_dir = root / "seed"
+            model_path = model_manager.create_seed_model(seed_dir, hidden=16, n_fft=256, hop_length=64)
+
+            self.assertTrue(model_path.is_file())
+            self.assertTrue((seed_dir / "README.md").is_file())
+            self.assertTrue((seed_dir / "seed_manifest.json").is_file())
+
+            manifest = json.loads((seed_dir / "seed_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(manifest["format"], "v-d-seed-model-v1")
+            self.assertFalse(manifest["trained"])
+
+            data = torch.load(model_path, map_location="cpu")
+            self.assertEqual(data["format"], "v-d-spectral-mapper-v1")
+            self.assertFalse(data["trained"])
+
+            src = root / "voice.wav"
+            dst = root / "matched.wav"
+            sr = 16000
+            t = np.linspace(0, 0.5, sr // 2, endpoint=False, dtype=np.float32)
+            y = 0.1 * np.sin(2 * np.pi * 260 * t)
+            sf.write(str(src), y, sr)
+
+            pipeline.apply_reference_model(src, model_path, dst, target_peak=0.5)
+
+            matched, out_sr = sf.read(str(dst), always_2d=False)
+            self.assertEqual(out_sr, sr)
+            self.assertGreater(len(matched), 0)
+            self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,6 +10,9 @@ input/
 output/
 work/
 profiles/
+models/
+datasets/
+vd_dataset/
 settings.json
 *.wav
 *.mp3
