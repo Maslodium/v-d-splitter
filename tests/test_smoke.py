@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 import numpy as np
@@ -78,6 +79,29 @@ class PipelineSmokeTests(unittest.TestCase):
             found = [p.name for p in pipeline.iter_inputs(root)]
 
             self.assertEqual(found, ["take.mp4", "voice.wav"])
+
+    def test_apply_reference_profile_writes_wav(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            src = Path(td) / "voice.wav"
+            profile = Path(td) / "profile.json"
+            dst = Path(td) / "matched.wav"
+            sr = 16000
+            y = np.zeros(sr, dtype=np.float32)
+            y[100:200] = 0.1
+            sf.write(str(src), y, sr)
+            profile.write_text(json.dumps({
+                "format": "v-d-reference-profile-v1",
+                "sample_rate": sr,
+                "fft_size": 8192,
+                "rms_gain": 2.0,
+                "spectral_ratio": [1.0] * 4097,
+            }), encoding="utf-8")
+
+            pipeline.apply_reference_profile(src, profile, dst, target_peak=0.5)
+
+            matched, out_sr = sf.read(str(dst), always_2d=False)
+            self.assertEqual(out_sr, sr)
+            self.assertLessEqual(float(np.max(np.abs(matched))), 0.51)
 
 
 if __name__ == "__main__":

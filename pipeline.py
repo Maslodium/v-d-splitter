@@ -371,12 +371,44 @@ def match_reference_voice(wav: Path, reference_wav: Path, out_wav: Path,
     return out_wav
 
 
+def apply_reference_profile(wav: Path, profile_json: Path, out_wav: Path,
+                            target_peak: float = 0.95) -> Path:
+    import json
+    import numpy as np
+    import soundfile as sf
+
+    profile = json.loads(Path(profile_json).read_text(encoding="utf-8"))
+    if profile.get("format") != "v-d-reference-profile-v1":
+        raise ValueError(f"unsupported reference profile: {profile.get('format')}")
+
+    y, sr = sf.read(str(wav), always_2d=True)
+    y = y * float(profile.get("rms_gain", 1.0))
+
+    fft_size = int(profile.get("fft_size", 8192))
+    ratio = np.asarray(profile.get("spectral_ratio", []), dtype=np.float64)
+    if ratio.size == (fft_size // 2 + 1):
+        source_freqs = np.fft.rfftfreq(fft_size, 1.0 / float(profile.get("sample_rate", sr)))
+        target_n = max(fft_size, len(y))
+        target_freqs = np.fft.rfftfreq(target_n, 1.0 / sr)
+        interp = np.interp(target_freqs, source_freqs, ratio, left=1.0, right=1.0)
+        interp[(target_freqs < 70) | (target_freqs > 14500)] = 1.0
+        for ch in range(y.shape[1]):
+            spec = np.fft.rfft(y[:, ch], n=target_n)
+            y[:, ch] = np.fft.irfft(spec * interp, n=target_n)[:len(y)]
+
+    y = limit_peak(y, target_peak)
+    out_wav.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(out_wav), y.squeeze() if y.shape[1] == 1 else y, sr)
+    return out_wav
+
+
 def process_video(input_path: Path, out_root: Path, device: str = "auto",
                   model: str = "htdemucs_ft", segment: int = 7,
                   keep_instrumental: bool = True,
                   denoise_model: str = "dns64",
                   denoise_dry: float = 0.0,
                   reference_audio: Path | None = None,
+                  reference_profile: Path | None = None,
                   polish_preset: str = "speech",
                   compressor: bool = True,
                   deesser: bool = True,
@@ -422,6 +454,12 @@ def process_video(input_path: Path, out_root: Path, device: str = "auto",
         print(f"[match] reference tone/dynamics -> {reference_audio}")
         ref_out = extract_audio(reference_audio, audio_dir / "reference.wav")
         match_reference_voice(denoised, ref_out, polish_src)
+    elif reference_profile:
+        reference_profile = Path(reference_profile)
+        if not reference_profile.is_file():
+            raise FileNotFoundError(reference_profile)
+        print(f"[profile] applying reference profile -> {reference_profile}")
+        apply_reference_profile(denoised, reference_profile, polish_src)
     else:
         normalize_voice(denoised, polish_src)
     print(f"[polish] preset={polish_preset} compressor={compressor} deesser={deesser} target_lufs={target_lufs}")
@@ -458,6 +496,8 @@ def main() -> int:
     parser.add_argument("--denoise-dry", type=float, default=0.0)
     parser.add_argument("--reference-audio", type=Path, default=None,
                         help="same-shoot lav/recorder sample used for post-denoise tone and dynamics matching")
+    parser.add_argument("--reference-profile", type=Path, default=None,
+                        help="profile JSON created by community_training.py build-profile")
     parser.add_argument("--polish-preset", choices=sorted(POLISH_PRESETS), default="speech")
     parser.add_argument("--no-compressor", action="store_true")
     parser.add_argument("--no-deesser", action="store_true")
@@ -482,6 +522,7 @@ def main() -> int:
                 denoise_model=args.denoise_model,
                 denoise_dry=args.denoise_dry,
                 reference_audio=args.reference_audio,
+                reference_profile=args.reference_profile,
                 polish_preset=args.polish_preset,
                 compressor=not args.no_compressor,
                 deesser=not args.no_deesser,

@@ -17,9 +17,12 @@ Maintained by Maslodium.
 - Cleans speech with Facebook Research Denoiser.
 - Can use a reference recording from the same shoot to match level, broad tone
   and soft dynamics.
+- Can apply a reusable reference profile built from multiple camera/reference
+  pairs.
 - Voice polish stage with compressor, de-esser, peak limiter and approximate
   loudness matching.
 - Folder input for batch processing supported audio/video files.
+- Community dataset tooling for Hugging Face style paired audio datasets.
 - Saves `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`, optional
   `background_no_voice.wav` and optional `reference.wav`.
 - Selects CUDA or CPU Torch wheels during Windows bootstrap install.
@@ -77,12 +80,22 @@ Torch wheels and `--device auto` or `--device mps`.
 ```powershell
 python pipeline.py input.mp4 --out output --device auto
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
+python pipeline.py camera.wav --reference-profile profiles/camera_lav.json --out output
 python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```
 
+## Community Training
+
+```powershell
+python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
+python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
+python community_training.py upload --folder vd_dataset --repo-id Maslodium/vd-same-shoot-pairs --repo-type dataset
+```
+
+See `docs/community-training.md`.
+
 ## Possible Improvements
 
-- Better Reference Match based on several lavalier samples from the same shoot.
 - Learned camera-to-lav restoration profile.
 - Real LUFS/true-peak metering.
 - Export presets for podcast, YouTube, broadcast and dialogue edit.
@@ -116,9 +129,12 @@ V-D означает VOICE-DENOISE. Программа достаёт аудио
 - Очистка речи через Facebook Research Denoiser.
 - Подгонка уровня, широкого тембра и мягкой динамики по референсной записи из
   той же съёмки.
+- Применение многоразового reference profile, собранного по нескольким парам
+  камера/референс.
 - Финальная обработка голоса: compressor, de-esser, peak limiter и примерное
   loudness matching.
 - Обработка папки с поддержанными аудио/видео файлами.
+- Инструмент подготовки community dataset в формате, удобном для Hugging Face.
 - Сохранение `extracted.wav`, `voice_raw.wav`, `voice_clean.wav`,
   опционально `background_no_voice.wav` и `reference.wav`.
 - Выбор CUDA или CPU Torch во время Windows bootstrap install.
@@ -173,13 +189,22 @@ py -3.12 -m venv .venv
 ```powershell
 python pipeline.py input.mp4 --out output --device auto
 python pipeline.py camera.wav --reference-audio lav_take.wav --out output
+python pipeline.py camera.wav --reference-profile profiles/camera_lav.json --out output
 python pipeline.py takes_folder --polish-preset camera-hiss --out output
 ```
 
+## Community Training
+
+```powershell
+python community_training.py prepare-dataset --camera-dir camera --reference-dir reference --out vd_dataset
+python community_training.py build-profile --dataset-dir vd_dataset --out profiles/camera_lav.json
+python community_training.py upload --folder vd_dataset --repo-id Maslodium/vd-same-shoot-pairs --repo-type dataset
+```
+
+Подробнее: `docs/community-training.md`.
+
 ## Возможные Доработки
 
-- Более точный Reference Match по нескольким образцам петлички из той же
-  съёмки.
 - Обучаемый профиль восстановления `camera -> lav`.
 - Настоящий LUFS/true-peak metering.
 - Export presets для подкаста, YouTube, broadcast и диалогового монтажа.

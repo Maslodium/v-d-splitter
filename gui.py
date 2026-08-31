@@ -119,6 +119,7 @@ class App:
         cfg = self._load_settings()
         self.in_path = tk.StringVar(value=cfg.get("in_path", ""))
         self.ref_path = tk.StringVar(value=cfg.get("ref_path", ""))
+        self.profile_path = tk.StringVar(value=cfg.get("profile_path", ""))
         self.out_path = tk.StringVar(value=cfg.get("out_path", str(HERE / "output")))
         self.device = tk.StringVar(value=cfg.get("device", "auto"))
         self.model = tk.StringVar(value=cfg.get("model", "htdemucs_ft"))
@@ -161,6 +162,7 @@ class App:
         data = {
             "in_path": self.in_path.get(),
             "ref_path": self.ref_path.get(),
+            "profile_path": self.profile_path.get(),
             "out_path": self.out_path.get(),
             "device": self.device.get(),
             "model": self.model.get(),
@@ -423,9 +425,12 @@ class App:
         tk.Label(sec, text="Reference", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=1, column=0, sticky="e", padx=(0, 8), pady=4)
         tip(self._entry(sec, self.ref_path, 34), "Optional lav/recorder sample from the same shoot for tone and dynamics matching.").grid(row=1, column=1, columnspan=4, sticky="ew")
         self._button(sec, "Sample", self._pick_reference).grid(row=1, column=5, padx=(8, 0))
-        tk.Label(sec, text="Output", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=2, column=0, sticky="e", padx=(0, 8), pady=4)
-        tip(self._entry(sec, self.out_path, 34), "Folder for extracted and cleaned audio.").grid(row=2, column=1, columnspan=4, sticky="ew")
-        self._button(sec, "Folder", self._pick_output).grid(row=2, column=5, padx=(8, 0))
+        tk.Label(sec, text="Profile", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=2, column=0, sticky="e", padx=(0, 8), pady=4)
+        tip(self._entry(sec, self.profile_path, 34), "Optional camera-to-lav profile JSON made by community_training.py.").grid(row=2, column=1, columnspan=4, sticky="ew")
+        self._button(sec, "JSON", self._pick_profile).grid(row=2, column=5, padx=(8, 0))
+        tk.Label(sec, text="Output", bg=COLORS["panel"], fg=COLORS["text_hi"]).grid(row=3, column=0, sticky="e", padx=(0, 8), pady=4)
+        tip(self._entry(sec, self.out_path, 34), "Folder for extracted and cleaned audio.").grid(row=3, column=1, columnspan=4, sticky="ew")
+        self._button(sec, "Folder", self._pick_output).grid(row=3, column=5, padx=(8, 0))
 
     def _engine_section(self, parent: tk.Widget) -> None:
         sec = self._section(parent, "AI ENGINE")
@@ -473,6 +478,11 @@ class App:
         if p:
             self.ref_path.set(p)
 
+    def _pick_profile(self) -> None:
+        p = filedialog.askopenfilename(title="Select reference profile", filetypes=[("JSON profile", "*.json"), ("All files", "*.*")])
+        if p:
+            self.profile_path.set(p)
+
     def _pick_output(self) -> None:
         p = filedialog.askdirectory(title="Select output folder", initialdir=self.out_path.get() or str(HERE))
         if p:
@@ -507,6 +517,9 @@ class App:
         ref = self.ref_path.get().strip()
         if ref:
             cmd.extend(["--reference-audio", ref])
+        profile = self.profile_path.get().strip()
+        if profile and not ref:
+            cmd.extend(["--reference-profile", profile])
         if not self.keep_bg.get():
             cmd.append("--no-instrumental")
         self.last_result_dir = Path(out) / Path(src).stem
